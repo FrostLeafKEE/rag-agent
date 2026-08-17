@@ -14,6 +14,7 @@ DEFAULT = RedactionEngine()
 
 # ---- 内置 PII 规则 ----
 
+
 def test_phone_masked() -> None:
     text, hits = DEFAULT.redact("联系电话：13812345678，请惠存。")
     assert "138****5678" in text
@@ -67,6 +68,7 @@ def test_short_numbers_not_false_positive() -> None:
 
 # ---- 词表与开关 ----
 
+
 def test_word_rules() -> None:
     engine = RedactionEngine(
         rules=[{"type": "word", "name": "内部代号", "words": ["北极星项目", "深海计划"]}]
@@ -86,6 +88,7 @@ def test_empty_text() -> None:
 
 
 # ---- 流式出口：跨帧命中 ----
+
 
 def test_stream_redacted_cross_frame() -> None:
     """手机号被切在帧边界时仍能完整脱敏（尾部缓冲）。"""
@@ -123,6 +126,7 @@ def test_stream_redacted_disabled_passthrough() -> None:
 
 # ---- 摄入环节：分块脱敏 + 审计 ----
 
+
 def test_pipeline_redacts_chunks_before_index(monkeypatch: pytest.MonkeyPatch) -> None:
     """写入索引/嵌入的内容必须已脱敏；命中回调上报规则名。"""
     from app.ingestion import pipeline
@@ -156,8 +160,13 @@ def test_pipeline_redacts_chunks_before_index(monkeypatch: pytest.MonkeyPatch) -
         "chunk_document",
         lambda *a, **k: [
             RetrievedChunk(
-                chunk_id=1, doc_id="D", chunk_index=0,
-                content="联系人：13812345678", section_path="", department="", score=0.0,
+                chunk_id=1,
+                doc_id="D",
+                chunk_index=0,
+                content="联系人：13812345678",
+                section_path="",
+                department="",
+                score=0.0,
             )
         ],
     )
@@ -166,9 +175,7 @@ def test_pipeline_redacts_chunks_before_index(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(pipeline, "get_engine", lambda path: RedactionEngine())  # noqa: ARG005
 
     hits: list[list[str]] = []
-    count = pipeline.ingest_document_sync(
-        Path("x.md"), "D", on_redact_hit=hits.append
-    )
+    count = pipeline.ingest_document_sync(Path("x.md"), "D", on_redact_hit=hits.append)
     assert count == 1
     assert "138****5678" in sent["upserted"][0]
     assert "13812345678" not in sent["embedded"][0]
@@ -192,14 +199,12 @@ def test_ingest_audits_redact_hit(monkeypatch: pytest.MonkeyPatch) -> None:
         from app.db import session_factory
 
         async with session_factory() as session:
-            await pipeline.ingest_document(
-                session, Path("p.md"), "DOCP", uploaded_by="tester"
-            )
+            await pipeline.ingest_document(session, Path("p.md"), "DOCP", uploaded_by="tester")
             rows = (
-                await session.execute(
-                    select(AuditLog).where(AuditLog.action == "redact")
-                )
-            ).scalars().all()
+                (await session.execute(select(AuditLog).where(AuditLog.action == "redact")))
+                .scalars()
+                .all()
+            )
             return rows
 
     rows = asyncio.run(run())

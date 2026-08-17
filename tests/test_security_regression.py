@@ -31,7 +31,9 @@ TEST_DOC_ID = "sec-test-doc"
 @pytest.fixture(autouse=True)
 def _auth():
     # 文档管理已管理员化：文档相关用例以 super_admin 身份执行
-    user = User(id=1, username="sec_tester", role="super_admin", department="研发部", is_active=True)
+    user = User(
+        id=1, username="sec_tester", role="super_admin", department="研发部", is_active=True
+    )
     app.dependency_overrides[get_current_user] = lambda: user
     yield
     app.dependency_overrides.pop(get_current_user, None)
@@ -71,6 +73,7 @@ def _upload(filename: str = "sec_test.md", doc_id: str = TEST_DOC_ID, department
 
 # ---- A1：空部门用户零可见 ----
 
+
 def test_build_filter_none_means_unrestricted() -> None:
     assert build_filter(None) == ""  # admin
 
@@ -81,7 +84,9 @@ def test_build_filter_empty_means_zero_visible() -> None:
 
 def test_user_departments_semantics() -> None:
     assert user_departments(User(id=1, username="a", role="admin", department="")) is None
-    assert user_departments(User(id=2, username="b", role="user", department="研发部")) == ["研发部"]
+    assert user_departments(User(id=2, username="b", role="user", department="研发部")) == [
+        "研发部"
+    ]
     assert user_departments(User(id=3, username="c", role="user", department="")) == []
 
 
@@ -93,9 +98,7 @@ def test_register_requires_department(_cleanup: None) -> None:
     assert resp.status_code == 422
 
 
-def test_regular_user_denied_document_management(
-    _cleanup: None, _no_enqueue: None
-) -> None:
+def test_regular_user_denied_document_management(_cleanup: None, _no_enqueue: None) -> None:
     """普通用户（含空部门）访问文档管理 → 403（RBAC 管理员化）。"""
     _upload()
     time.sleep(0.2)
@@ -103,16 +106,17 @@ def test_regular_user_denied_document_management(
     app.dependency_overrides[get_current_user] = lambda: nodep
     resp = _client.get("/api/v1/documents")
     assert resp.status_code == 403  # 空部门普通用户：无文档管理权限
-    assert _client.post(
-        "/api/v1/documents/upload",
-        files={"file": ("x.md", b"x", "text/markdown")},
-        data={"department": "研发部"},
-    ).status_code == 403
+    assert (
+        _client.post(
+            "/api/v1/documents/upload",
+            files={"file": ("x.md", b"x", "text/markdown")},
+            data={"department": "研发部"},
+        ).status_code
+        == 403
+    )
 
 
-def test_admin_without_departments_sees_nothing(
-    _cleanup: None, _no_enqueue: None
-) -> None:
+def test_admin_without_departments_sees_nothing(_cleanup: None, _no_enqueue: None) -> None:
     """部门管理员未分配负责部门 → 空列表（零可见）。"""
     _upload()
     time.sleep(0.2)
@@ -123,9 +127,7 @@ def test_admin_without_departments_sees_nothing(
     assert resp.json()["items"] == []
 
 
-def test_admin_scoped_to_assigned_departments(
-    _cleanup: None, _no_enqueue: None
-) -> None:
+def test_admin_scoped_to_assigned_departments(_cleanup: None, _no_enqueue: None) -> None:
     """部门管理员仅见负责部门（多部门集合正确）。"""
     from app.models import AdminDepartment
 
@@ -138,9 +140,7 @@ def test_admin_scoped_to_assigned_departments(
         from app.db import session_factory
 
         async with session_factory() as session:
-            session.add_all(
-                AdminDepartment(user_id=13, department=d) for d in ["研发部", "人事部"]
-            )
+            session.add_all(AdminDepartment(user_id=13, department=d) for d in ["研发部", "人事部"])
             await session.commit()
 
     asyncio.run(seed())
@@ -153,6 +153,7 @@ def test_admin_scoped_to_assigned_departments(
 
 # ---- A2：doc_id 白名单（Milvus filter 注入）----
 
+
 def test_upload_rejects_injection_doc_id(_cleanup: None, _no_enqueue: None) -> None:
     evil = 'x" || doc_id != "x'
     resp = _upload(doc_id=evil)
@@ -161,7 +162,7 @@ def test_upload_rejects_injection_doc_id(_cleanup: None, _no_enqueue: None) -> N
 
 
 def test_delete_rejects_injection_doc_id(_cleanup: None, _no_enqueue: None) -> None:
-    resp = _client.delete('/api/v1/documents/x%22%20||%20doc_id%20!=%20%22x')
+    resp = _client.delete("/api/v1/documents/x%22%20||%20doc_id%20!=%20%22x")
     assert resp.status_code == 404  # 不进入 Milvus 表达式
 
 
@@ -183,9 +184,8 @@ def test_safe_doc_id_allows_chinese_and_dash() -> None:
 
 # ---- A3：doc_id 冲突归属校验（文档接管）----
 
-def test_upload_conflict_with_other_user_rejected(
-    _cleanup: None, _no_enqueue: None
-) -> None:
+
+def test_upload_conflict_with_other_user_rejected(_cleanup: None, _no_enqueue: None) -> None:
     """doc_id 冲突且归属其他管理员 → 409（防文档接管）。"""
     from app.models import AdminDepartment
 
@@ -206,9 +206,7 @@ def test_upload_conflict_with_other_user_rejected(
     assert resp.status_code == 409
 
 
-def test_upload_conflict_same_user_allowed(
-    _cleanup: None, _no_enqueue: None
-) -> None:
+def test_upload_conflict_same_user_allowed(_cleanup: None, _no_enqueue: None) -> None:
     first = _upload()
     assert first.status_code == 202
     time.sleep(0.2)
@@ -217,6 +215,7 @@ def test_upload_conflict_same_user_allowed(
 
 
 # ---- A4：worker 跳过已删除文档 ----
+
 
 def test_worker_skips_disabled_document(_sqlite_engine, monkeypatch: pytest.MonkeyPatch) -> None:
     """删除竞态：已 disabled 文档的摄入任务直接丢弃，不复活向量。"""
@@ -264,6 +263,7 @@ def test_worker_skips_disabled_document(_sqlite_engine, monkeypatch: pytest.Monk
 
 # ---- B 批：密码/审计/JWT/limit ----
 
+
 def test_register_rejects_password_over_72_bytes(_cleanup: None) -> None:
     resp = _client.post(
         "/api/v1/auth/register",
@@ -277,14 +277,14 @@ def test_register_rejects_password_over_72_bytes(_cleanup: None) -> None:
     assert "72" in resp.json()["detail"]
 
 
-def test_delete_writes_audit(_cleanup: None, _no_enqueue: None, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_delete_writes_audit(
+    _cleanup: None, _no_enqueue: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _upload()
     time.sleep(0.2)
     monkeypatch.setattr(
         "app.ingestion.indexer.MilvusIndexer",
-        lambda *a, **k: type(
-            "FakeIdx", (), {"delete_by_doc": lambda self, d: None}
-        )(),
+        lambda *a, **k: type("FakeIdx", (), {"delete_by_doc": lambda self, d: None})(),
     )
     resp = _client.delete(f"/api/v1/documents/{TEST_DOC_ID}")
     assert resp.status_code == 200
@@ -342,8 +342,10 @@ def test_prod_env_requires_strong_jwt_secret() -> None:
         Settings(app_env="prod", jwt_secret="short")
     with pytest.raises(ValueError, match="DEBUG"):
         Settings(app_env="prod", jwt_secret="x" * 40)  # debug 默认 True 也不允许
-    ok = Settings(app_env="prod", jwt_secret="x" * 40, debug=False)
-    assert ok.jwt_secret  # 显式强密钥 + debug 关闭放行
+    with pytest.raises(ValueError, match="AUTH_DISABLE_SIGNUP"):
+        Settings(app_env="prod", jwt_secret="x" * 40, debug=False)  # 注册开关未显式开启
+    ok = Settings(app_env="prod", jwt_secret="x" * 40, debug=False, auth_disable_signup=True)
+    assert ok.jwt_secret  # 显式强密钥 + debug 关闭 + 注册关闭放行
     # dev 环境默认值不阻塞（本地开发）
     assert Settings(app_env="dev").jwt_secret
 
@@ -358,6 +360,7 @@ def test_list_limit_clamped(_cleanup: None, _no_enqueue: None) -> None:
 
 
 # ---- 登录暴力破解限速 ----
+
 
 def test_login_lockout_after_repeated_failures() -> None:
     """同一用户名连续失败 5 次后锁定（第 6 次登录 429）。"""

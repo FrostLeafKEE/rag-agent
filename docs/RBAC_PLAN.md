@@ -32,6 +32,7 @@
 # User.role 取值扩展
 role: str  # "super_admin" | "admin" | "user"（默认 user）
 
+
 # 新表：部门管理员负责部门集合（多对多）
 class AdminDepartment(Base):
     __tablename__ = "admin_departments"

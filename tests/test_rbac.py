@@ -46,13 +46,31 @@ def _seed_users() -> None:
         from app.db import session_factory
 
         async with session_factory() as session:
-            await session.execute(text("DELETE FROM users WHERE username LIKE 'rbac%' OR username = 'boss'"))
+            await session.execute(
+                text("DELETE FROM users WHERE username LIKE 'rbac%' OR username = 'boss'")
+            )
             session.add_all(
                 [
-                    User(id=1, username="boss", role="super_admin", department="", password_hash="x"),
-                    User(id=20, username="rbac_admin", role="admin", department="", password_hash="x"),
-                    User(id=21, username="rbac_user", role="user", department="研发部", password_hash="x"),
-                    User(id=22, username="rbac_sa2", role="super_admin", department="", password_hash="x"),
+                    User(
+                        id=1, username="boss", role="super_admin", department="", password_hash="x"
+                    ),
+                    User(
+                        id=20, username="rbac_admin", role="admin", department="", password_hash="x"
+                    ),
+                    User(
+                        id=21,
+                        username="rbac_user",
+                        role="user",
+                        department="研发部",
+                        password_hash="x",
+                    ),
+                    User(
+                        id=22,
+                        username="rbac_sa2",
+                        role="super_admin",
+                        department="",
+                        password_hash="x",
+                    ),
                 ]
             )
             await session.commit()
@@ -61,6 +79,7 @@ def _seed_users() -> None:
 
 
 # ---- user_visible_departments 矩阵 ----
+
 
 def test_visible_departments_matrix(_cleanup: None) -> None:
     _seed_users()
@@ -95,6 +114,7 @@ def test_visible_departments_matrix(_cleanup: None) -> None:
 
 
 # ---- 管理端点权限 ----
+
 
 def test_admin_endpoints_require_super_admin(_cleanup: None) -> None:
     _seed_users()
@@ -156,9 +176,7 @@ def test_create_admin_with_departments(_cleanup: None) -> None:
             return list(
                 (
                     await session.execute(
-                        select(AdminDepartment.department).where(
-                            AdminDepartment.user_id == user_id
-                        )
+                        select(AdminDepartment.department).where(AdminDepartment.user_id == user_id)
                     )
                 ).scalars()
             )
@@ -174,9 +192,7 @@ def test_set_departments_overwrite(_cleanup: None) -> None:
     )
     assert r1.status_code == 200
     # 覆盖式更新
-    r2 = _client.put(
-        "/api/v1/admin/users/20/departments", json={"departments": ["财务部"]}
-    )
+    r2 = _client.put("/api/v1/admin/users/20/departments", json={"departments": ["财务部"]})
     assert r2.status_code == 200
     got = _client.get("/api/v1/admin/users/20/departments").json()
     assert got["departments"] == ["财务部"]
@@ -184,9 +200,7 @@ def test_set_departments_overwrite(_cleanup: None) -> None:
 
 def test_set_departments_requires_admin_role(_cleanup: None) -> None:
     _seed_users()
-    resp = _client.put(
-        "/api/v1/admin/users/21/departments", json={"departments": ["研发部"]}
-    )
+    resp = _client.put("/api/v1/admin/users/21/departments", json={"departments": ["研发部"]})
     assert resp.status_code == 422  # 21 是普通用户
 
 
@@ -198,10 +212,9 @@ def test_set_departments_rejects_empty(_cleanup: None) -> None:
 
 # ---- 防自锁 ----
 
+
 def test_cannot_demote_self(_cleanup: None) -> None:
-    resp = _client.patch(
-        "/api/v1/admin/users/1", json={"role": "user"}
-    )  # 当前用户 id=1（boss）
+    resp = _client.patch("/api/v1/admin/users/1", json={"role": "user"})  # 当前用户 id=1（boss）
     assert resp.status_code == 400
 
 
@@ -212,9 +225,7 @@ def test_cannot_disable_self(_cleanup: None) -> None:
 
 def test_cannot_demote_last_super_admin(_cleanup: None) -> None:
     # 库中仅 boss（id=1）一个 super_admin
-    resp = _client.patch(
-        "/api/v1/admin/users/1", json={"role": "admin"}
-    )
+    resp = _client.patch("/api/v1/admin/users/1", json={"role": "admin"})
     assert resp.status_code == 400  # 被"必须保留一个 super_admin"拦截（先于自锁校验）
 
 

@@ -21,24 +21,54 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_RULES: list[dict] = [
     # 手机号：保留前 3 后 4（(?<!\d)...(?!\d) 防止长数字串内部误伤）
-    {"type": "pattern", "name": "phone", "pattern": r"(?<!\d)1[3-9]\d{9}(?!\d)",
-     "keep_left": 3, "keep_right": 4},
+    {
+        "type": "pattern",
+        "name": "phone",
+        "pattern": r"(?<!\d)1[3-9]\d{9}(?!\d)",
+        "keep_left": 3,
+        "keep_right": 4,
+    },
     # 身份证 15/18 位：保留前 4 后 4（独立数字串，避免误伤）
-    {"type": "pattern", "name": "id_card", "pattern": r"(?<!\d)(?:\d{17}[\dXx]|\d{15})(?!\d)",
-     "keep_left": 4, "keep_right": 4},
+    {
+        "type": "pattern",
+        "name": "id_card",
+        "pattern": r"(?<!\d)(?:\d{17}[\dXx]|\d{15})(?!\d)",
+        "keep_left": 4,
+        "keep_right": 4,
+    },
     # 银行卡 16-19 位：保留前 4 后 4
-    {"type": "pattern", "name": "bank_card", "pattern": r"(?<!\d)\d{16,19}(?!\d)",
-     "keep_left": 4, "keep_right": 4},
+    {
+        "type": "pattern",
+        "name": "bank_card",
+        "pattern": r"(?<!\d)\d{16,19}(?!\d)",
+        "keep_left": 4,
+        "keep_right": 4,
+    },
     # 邮箱：掩码本地部分，保留域名（a****@company.com）
-    {"type": "pattern", "name": "email",
-     "pattern": r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
-     "keep_left": 1, "keep_right": 0, "email_keep_domain": True},
+    {
+        "type": "pattern",
+        "name": "email",
+        "pattern": r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
+        "keep_left": 1,
+        "keep_right": 0,
+        "email_keep_domain": True,
+    },
     # API 密钥（sk-/pk-/ak- 前缀）：保留前缀与尾部 4 位
-    {"type": "pattern", "name": "api_key", "pattern": r"\b(?:sk|pk|ak)-[A-Za-z0-9_-]{8,}\b",
-     "keep_left": 4, "keep_right": 4},
+    {
+        "type": "pattern",
+        "name": "api_key",
+        "pattern": r"\b(?:sk|pk|ak)-[A-Za-z0-9_-]{8,}\b",
+        "keep_left": 4,
+        "keep_right": 4,
+    },
     # 内网 IP
-    {"type": "pattern", "name": "ipv4", "pattern": r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",
-     "keep_left": 0, "keep_right": 0},
+    {
+        "type": "pattern",
+        "name": "ipv4",
+        "pattern": r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",
+        "keep_left": 0,
+        "keep_right": 0,
+    },
 ]
 
 # 正则模式每条最多生成掩码长度上限（超长文本不回显）
@@ -93,10 +123,11 @@ class RedactionEngine:
             if not pattern.search(masked):
                 continue
             hits.add(rule["name"])
-            masked = pattern.sub(
-                lambda m, r=rule: _mask_with_keep(m, r),
-                masked,
-            )
+
+            def _apply(m: re.Match, r: dict = rule) -> str:
+                return _mask_with_keep(m, r)
+
+            masked = pattern.sub(_apply, masked)
         for rule, words in self._words:
             for word in words:
                 if word in masked:

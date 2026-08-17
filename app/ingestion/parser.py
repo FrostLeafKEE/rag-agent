@@ -180,22 +180,22 @@ class DoclingParser(DocumentParser):
         except ImportError as e:  # pragma: no cover - 依赖缺失
             raise ParseError("Docling 未安装，无法解析该格式。请先 `uv add docling`") from e
         self._converter = DocumentConverter(
-            allowed_formats={
+            allowed_formats=[
                 InputFormat.PDF,
                 InputFormat.DOCX,
                 InputFormat.PPTX,
                 InputFormat.HTML,
-            }
+            ]
         )
 
     def parse(self, path: Path) -> list[ParsedBlock]:
         result = self._converter.convert(path)
         blocks: list[ParsedBlock] = []
         for item, level in result.document.iterate_items():
-            if item.label.value == "table":
-                blocks.append(ParsedBlock(text=item.export_to_markdown(), kind="table"))
-            elif item.label.value in ("title", "section_heading"):
-                text = " ".join(item.text.split())
+            if item.label.value == "table":  # type: ignore  # docling stub 缺 NodeItem.label
+                blocks.append(ParsedBlock(text=item.export_to_markdown(), kind="table"))  # type: ignore  # docling stub 缺 export_to_markdown
+            elif item.label.value in ("title", "section_heading"):  # type: ignore  # docling stub 缺 NodeItem.label
+                text = " ".join(item.text.split())  # type: ignore  # docling stub 缺 NodeItem.text
                 blocks.append(
                     ParsedBlock(
                         text=text,
@@ -204,7 +204,7 @@ class DoclingParser(DocumentParser):
                     )
                 )
             else:
-                text = " ".join(item.text.split())
+                text = " ".join(item.text.split())  # type: ignore  # docling stub 缺 NodeItem.text
                 if text:
                     blocks.append(ParsedBlock(text=text))
         return blocks

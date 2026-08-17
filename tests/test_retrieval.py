@@ -55,8 +55,7 @@ def test_build_filter() -> None:
 
 def test_noop_reranker_keeps_order() -> None:
     chunks = [
-        RetrievedChunk(chunk_id=i, doc_id="d", chunk_index=i, content=f"c{i}")
-        for i in range(3)
+        RetrievedChunk(chunk_id=i, doc_id="d", chunk_index=i, content=f"c{i}") for i in range(3)
     ]
     reranked = NoopReranker().rerank("q", chunks, top_k=2)
     assert [c.chunk_id for c in reranked] == [0, 1]

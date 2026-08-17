@@ -62,12 +62,14 @@ async def user_visible_departments(user: User) -> list[str] | None:
 
         async with session_factory() as session:
             rows = (
-                await session.execute(
-                    select(AdminDepartment.department).where(
-                        AdminDepartment.user_id == user.id
+                (
+                    await session.execute(
+                        select(AdminDepartment.department).where(AdminDepartment.user_id == user.id)
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
         return list(rows)
     return [user.department] if user.department else []
 

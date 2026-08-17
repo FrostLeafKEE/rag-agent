@@ -23,7 +23,7 @@ logger = logging.getLogger("ingest")
 
 
 async def _ingest(path: Path, doc_id: str, department: str, chunk_size: int, overlap: int) -> int:
-    async for session in get_session():
+    async for session in get_session():  # type: ignore  # get_session 是 async generator 依赖（FastAPI 模式）
         return await ingest_document(
             session,
             path,

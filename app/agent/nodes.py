@@ -202,10 +202,10 @@ async def multi_query(state: QAState) -> QAState:
     data = await _complete_json(
         get_llm(), MULTI_QUERY_PROMPT.format(question=base, count=settings.multi_query_count)
     )
-    variants = data if isinstance(data, list) else []
-    variants = [
-        v for v in variants if isinstance(v, str) and v.strip()
-    ][: settings.multi_query_count]
+    variants: list[str] = data if isinstance(data, list) else []
+    variants = [v for v in variants if isinstance(v, str) and v.strip()][
+        : settings.multi_query_count
+    ]
     if variants:
         state["trace"]["multi_queries"] = variants
         return {**state, "queries": [base, *variants]}

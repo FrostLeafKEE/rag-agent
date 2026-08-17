@@ -1,6 +1,5 @@
 """模型网关单元测试：mock HTTP 层，不实际调用外部 API。"""
 
-
 import pytest
 
 from app.llm.gateway import LLMError, LLMGateway

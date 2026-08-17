@@ -73,20 +73,33 @@ async def _recover_pending(client: aioredis.Redis) -> None:
     仅 XREADGROUP `>` 读新消息永远看不到它们——启动时恢复一次。
     """
     try:
-        pending = await client.xpending(STREAM, GROUP)
-        msg_ids = (pending or {}).get("pending") or []
-        if not msg_ids:
+        pending_info = await client.xpending(STREAM, GROUP)
+        if not isinstance(pending_info, dict):
+            return
+        msg_ids = pending_info.get("pending") or []
+        if not isinstance(msg_ids, list) or not msg_ids:
             return
         claimed = await client.xclaim(
             STREAM, GROUP, "recovery", min_idle_time=60000, message_ids=msg_ids
         )
-        for msg_id, payload in claimed:
+        if not isinstance(claimed, list):
+            return
+        for entry in claimed:
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                continue
+            msg_id, payload = entry
+            if not isinstance(msg_id, (str, bytes)) or not isinstance(payload, dict):
+                continue
             retry = int(payload.get("retry", 0) or 0) + 1
-            await client.xadd(STREAM, {**payload, "retry": str(retry)})
+            await client.xadd(
+                STREAM, {**{str(k): v for k, v in payload.items()}, "retry": str(retry)}
+            )
             await client.xack(STREAM, GROUP, msg_id)
             logger.warning(
                 "PEL 恢复：滞留消息重新入队 %s（msg=%s, retry=%d）",
-                payload.get("doc_id"), msg_id, retry,
+                payload.get("doc_id"),
+                msg_id,
+                retry,
             )
     except Exception:
         logger.warning("PEL 恢复检查失败（继续正常消费）", exc_info=True)
@@ -108,15 +121,22 @@ async def worker_loop(process_one, should_stop=None) -> None:  # noqa: ANN001
             await client.aclose()
             return
         try:
-            items = await client.xreadgroup(
-                GROUP, "worker-1", {STREAM: ">"}, count=1, block=5000
-            )
+            items = await client.xreadgroup(GROUP, "worker-1", {STREAM: ">"}, count=1, block=5000)
         except Exception:
             logger.exception("读取队列失败，5s 后重试")
             await asyncio.sleep(5)
             continue
+        if not isinstance(items, list):
+            continue
         for _, messages in items:
-            for msg_id, payload in messages:
+            if not isinstance(messages, list):
+                continue
+            for entry in messages:
+                if not isinstance(entry, tuple) or len(entry) != 2:
+                    continue
+                msg_id, payload = entry
+                if not isinstance(payload, dict):
+                    continue
                 retry = int(payload.get("retry", 0) or 0)
                 try:
                     await process_one(payload)

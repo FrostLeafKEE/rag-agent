@@ -21,7 +21,7 @@ from datetime import UTC, datetime, timedelta
 logger = logging.getLogger(__name__)
 
 INTENT_PROMPT = (
-    '判断下面用户问题的意图，只输出 JSON（不要输出其他内容）：'
+    "判断下面用户问题的意图，只输出 JSON（不要输出其他内容）："
     '{{"intent": "qa"|"summary"|"chat"|"clarify"}}\n'
     "- qa：向企业知识库查询事实/信息\n"
     "- summary：要求总结某个文档或主题\n"
@@ -166,9 +166,7 @@ def append_feedback_cases(cases: list[dict]) -> int:
         for c in golden_set.load_feedback_cases()
     ] + cases
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return len(data)
 
 
@@ -180,9 +178,7 @@ def main() -> int:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
 
-    new_cases = asyncio.run(
-        collect_feedback_cases(limit=args.limit, since_days=args.since_days)
-    )
+    new_cases = asyncio.run(collect_feedback_cases(limit=args.limit, since_days=args.since_days))
     if not new_cases:
         print("无新点踩样本（或含问法的全部已沉淀）")
         return 0

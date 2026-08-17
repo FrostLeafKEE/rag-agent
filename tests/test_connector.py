@@ -38,9 +38,7 @@ def test_load_config_missing_file() -> None:
 
 def test_load_config_filters_invalid_items(tmp_path: Path) -> None:
     cfg = tmp_path / "c.json"
-    cfg.write_text(
-        json.dumps([{"path": "D:/a"}, {"path": ""}, {"nopath": 1}]), encoding="utf-8"
-    )
+    cfg.write_text(json.dumps([{"path": "D:/a"}, {"path": ""}, {"nopath": 1}]), encoding="utf-8")
     assert [i["path"] for i in load_config(cfg)] == ["D:/a"]
 
 
@@ -54,9 +52,7 @@ def test_doc_id_readable() -> None:
     assert _doc_id_for(Path("D:/知识库/研发部/入职手册.pdf")) == "研发部-入职手册"
 
 
-def test_scan_once_new_file_enqueued(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_scan_once_new_file_enqueued(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     asyncio.run(_clean_records())
     src_dir = tmp_path / "watch"
     src_dir.mkdir()
@@ -81,9 +77,7 @@ def test_scan_once_new_file_enqueued(
     assert name == "入职手册.md"
 
 
-def test_scan_once_skips_unchanged(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_scan_once_skips_unchanged(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """指纹未变 → 跳过，不重复入队。"""
     asyncio.run(_clean_records())
     src_dir = tmp_path / "watch"
@@ -107,9 +101,7 @@ def test_scan_once_skips_unchanged(
     assert calls == []
 
 
-def test_scan_once_reingests_changed_file(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_scan_once_reingests_changed_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """文件变更（size 变化）→ 重新入队（updated）。"""
     asyncio.run(_clean_records())
     src_dir = tmp_path / "watch"

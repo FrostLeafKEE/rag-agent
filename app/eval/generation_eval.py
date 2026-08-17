@@ -16,10 +16,12 @@ import argparse
 import asyncio
 import logging
 import sys
+from typing import cast
 
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings as LangchainOpenAIEmbeddings
-from ragas import EvaluationDataset, SingleTurnSample, evaluate
+from pydantic import SecretStr
+from ragas import EvaluationDataset, EvaluationResult, SingleTurnSample, evaluate
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import answer_relevancy, context_precision, faithfulness
@@ -43,12 +45,12 @@ async def collect_answer(question: str, top_k: int) -> tuple[str, list[str]]:
     return "".join(answer_parts), contexts
 
 
-def build_judge() -> LangchainLLMWrapper:
+def build_judge():  # noqa: ANN202  ragas stub 类型不可用，返回 Any
     settings = get_settings()
     return LangchainLLMWrapper(
         ChatOpenAI(
             base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
+            api_key=SecretStr(settings.llm_api_key),
             model=settings.llm_model,
             temperature=0,
             max_retries=2,
@@ -56,13 +58,13 @@ def build_judge() -> LangchainLLMWrapper:
     )
 
 
-def build_embeddings() -> LangchainEmbeddingsWrapper:
+def build_embeddings():  # noqa: ANN202  ragas stub 类型不可用，返回 Any
     """RAGAS 内部需要 embedding（SiliconFlow BGE-M3，LangChain 包装提供 embed_query）。"""
     settings = get_settings()
     return LangchainEmbeddingsWrapper(
         LangchainOpenAIEmbeddings(
             model=settings.embedding_model,
-            api_key=settings.embedding_api_key,
+            api_key=SecretStr(settings.embedding_api_key),
             base_url=settings.embedding_base_url,
         )
     )
@@ -99,13 +101,13 @@ def run_generation_eval(
         )
 
     print("开始 RAGAS 评分（faithfulness / answer_relevancy / context_precision）...")
-    result = evaluate(
-        dataset=EvaluationDataset(samples=samples),
+    result = evaluate(  # type: ignore  # ragas stub 类型过宽（EvaluationDataset samples union）
+        dataset=EvaluationDataset(samples=samples),  # type: ignore  # ragas stub samples 类型过宽
         metrics=[faithfulness, answer_relevancy, context_precision],
         llm=build_judge(),
         embeddings=build_embeddings(),
     )
-    df = result.to_pandas()
+    df = cast(EvaluationResult, result).to_pandas()
     return {
         "cases": len(cases),
         "faithfulness": round(float(df["faithfulness"].mean()), 3),

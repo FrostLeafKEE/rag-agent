@@ -27,7 +27,7 @@ def run_eval(
 
     hit_cases = [h for h in hits if h[1] is not None]
     recall_at_k = len(hit_cases) / len(cases)
-    mrr = sum(1.0 / (pos + 1) for _, pos in hit_cases) / len(cases)
+    mrr = sum(1.0 / (pos + 1) for _, pos in hit_cases if pos is not None) / len(cases)
     return {
         "cases": len(cases),
         "top_k": top_k,

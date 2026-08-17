@@ -99,9 +99,7 @@ def main() -> int:
         "recall_at_k": ret["recall_at_k"],
         "mrr": ret["mrr"],
         **{
-            k: gen[k]
-            for k in ("faithfulness", "answer_relevancy", "context_precision")
-            if k in gen
+            k: gen[k] for k in ("faithfulness", "answer_relevancy", "context_precision") if k in gen
         },
         "chat_refusal": chat["chat_refusal"],
     }

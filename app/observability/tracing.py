@@ -83,12 +83,11 @@ class _LangfuseQATrace(QATrace):
 
     def retrieval(self, query: str, results: list) -> None:  # noqa: ANN001
         summary = [
-            {"doc_id": r.doc_id, "section": r.section_path, "score": r.score}
-            for r in results
+            {"doc_id": r.doc_id, "section": r.section_path, "score": r.score} for r in results
         ]
-        span = self._client.start_observation(
+        span = self._client.start_observation(  # type: ignore  # Langfuse stub 与 kwargs 传参不符（4.x overload 签名限制）
             name="retrieval",
-            trace_context=_trace_context(self.trace_id, self._qa_span.id),
+            trace_context=_trace_context(self.trace_id or "", self._qa_span.id),
             input={"query": query},
             output=summary,
             metadata={"hit_count": len(results)},
@@ -98,10 +97,10 @@ class _LangfuseQATrace(QATrace):
     async def llm_stream(self, llm, messages: list[dict]) -> AsyncIterator[str]:  # noqa: ANN001
         settings = get_settings()
         answer_parts: list[str] = []
-        generation = self._client.start_observation(
+        generation = self._client.start_observation(  # type: ignore  # Langfuse stub 与 kwargs 传参不符（4.x overload 签名限制）
             name="llm",
             as_type="generation",
-            trace_context=_trace_context(self.trace_id, self._qa_span.id),
+            trace_context=_trace_context(self.trace_id or "", self._qa_span.id),
             model=settings.llm_model,
             model_parameters={"temperature": settings.llm_temperature},
             input=messages,
@@ -121,7 +120,7 @@ async def trace_qa(question: str, departments: list[str] | None, top_k: int):
         yield _NoopQATrace()
         return
     trace_id = client.create_trace_id()
-    qa_span = client.start_observation(
+    qa_span = client.start_observation(  # type: ignore  # Langfuse stub 与 kwargs 传参不符（4.x overload 签名限制）
         name="qa",
         trace_context=_trace_context(trace_id),
         input={"question": question, "departments": departments, "top_k": top_k},

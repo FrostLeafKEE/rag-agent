@@ -37,6 +37,7 @@ def _no_enqueue(monkeypatch: pytest.MonkeyPatch):
 
 # ---- P0-1 部门 filter 注入 ----
 
+
 def test_build_filter_rejects_injection_department() -> None:
     from app.retrieval.base import build_filter
 
@@ -71,6 +72,7 @@ def test_upload_rejects_injection_department(_no_enqueue: None) -> None:
 
 # ---- P0-2 工具 SQL 表名单绕过 ----
 
+
 def test_safe_select_rejects_comma_separated_tables() -> None:
     from app.agent.tools import _safe_select
 
@@ -86,6 +88,7 @@ def test_safe_select_rejects_comma_separated_tables() -> None:
 
 
 # ---- P0-4 摄入失败落库 failed ----
+
 
 def test_ingestion_failure_marks_document_failed(
     _sqlite_engine, monkeypatch: pytest.MonkeyPatch
@@ -143,6 +146,7 @@ def test_ingestion_failure_marks_document_failed(
 
 # ---- P1-10 connector doc_id 截断 ----
 
+
 def test_connector_doc_id_within_safe_limit() -> None:
     from app.ingestion.connector import _doc_id_for
     from app.ingestion.indexer import SAFE_DOC_ID
@@ -157,6 +161,7 @@ def test_connector_doc_id_within_safe_limit() -> None:
 
 
 # ---- P1-11 魔数校验 ----
+
 
 def test_upload_rejects_fake_extension(_no_enqueue: None) -> None:
     """改名为 .pdf 的文本文件被拒（魔数不匹配）。"""
@@ -177,7 +182,42 @@ def test_upload_accepts_real_pdf(_no_enqueue: None) -> None:
     assert resp.status_code == 202
 
 
+# ---- R1 注册开关 / R2 安全响应头（ROADMAP 第一批）----
+
+
+def test_register_disabled_returns_403(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.config import Settings
+
+    monkeypatch.setattr(
+        "app.api.routes.auth.get_settings",
+        lambda: Settings(auth_disable_signup=True),
+    )
+    resp = _client.post(
+        "/api/v1/auth/register",
+        json={"username": "fx_signup_off", "password": "passw0rd123", "department": "研发部"},
+    )
+    assert resp.status_code == 403
+    assert "注册" in resp.json()["detail"]
+
+
+def test_prod_requires_signup_disabled() -> None:
+    from app.config import Settings
+
+    with pytest.raises(ValueError, match="AUTH_DISABLE_SIGNUP"):
+        Settings(app_env="prod", jwt_secret="x" * 40, debug=False)
+    ok = Settings(app_env="prod", jwt_secret="x" * 40, debug=False, auth_disable_signup=True)
+    assert ok.auth_disable_signup
+
+
+def test_security_headers_present() -> None:
+    resp = _client.get("/healthz")
+    assert resp.headers.get("x-content-type-options") == "nosniff"
+    assert resp.headers.get("x-frame-options") == "DENY"
+    assert resp.headers.get("referrer-policy") == "no-referrer"
+
+
 # ---- P2-14 指标模板路径 ----
+
 
 def test_metrics_use_route_template_paths(_no_enqueue: None) -> None:
     """动态路径（会话/文档 id）不应直接进指标 label。"""

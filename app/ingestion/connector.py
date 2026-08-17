@@ -87,8 +87,12 @@ async def scan_once(config_path: Path | None = None) -> dict:
     settings = get_settings()
     dirs = load_config(config_path or Path(settings.connector_config))
     stats: dict = {
-        "scanned": 0, "new": 0, "updated": 0,
-        "skipped": 0, "failed": 0, "errors": [],
+        "scanned": 0,
+        "new": 0,
+        "updated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": [],
     }
     if not dirs:
         logger.info("无 connector 目录配置（%s），跳过本轮", settings.connector_config)
@@ -137,9 +141,13 @@ async def scan_once(config_path: Path | None = None) -> dict:
                 if existing is None:
                     session.add(
                         IngestedFile(
-                            path=str(file), path_key=key, size=st.st_size,
-                            mtime_ns=st.st_mtime_ns, fingerprint=fprint,
-                            department=department, doc_id=doc_id,
+                            path=str(file),
+                            path_key=key,
+                            size=st.st_size,
+                            mtime_ns=st.st_mtime_ns,
+                            fingerprint=fprint,
+                            department=department,
+                            doc_id=doc_id,
                         )
                     )
                     stats["new"] += 1
@@ -190,9 +198,7 @@ def main() -> int:
     parser.add_argument("--once", action="store_true", help="只扫描一轮并退出")
     parser.add_argument("--interval", type=int, default=None, help="常驻扫描间隔秒")
     args = parser.parse_args()
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
     if args.once:
         stats = asyncio.run(scan_once())

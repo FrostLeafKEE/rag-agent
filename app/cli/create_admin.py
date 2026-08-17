@@ -18,7 +18,7 @@ from app.models import User
 
 
 async def _run(username: str, password: str, department: str) -> None:
-    async for session in get_session():
+    async for session in get_session():  # type: ignore  # get_session 是 async generator 依赖（FastAPI 模式）
         user = await session.scalar(select(User).where(User.username == username))
         if user is None:
             user = User(

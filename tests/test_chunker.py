@@ -20,12 +20,7 @@ def _md_blocks(text: str) -> list[ParsedBlock]:
 
 def test_headings_start_new_chunks_and_track_section_path() -> None:
     blocks = _md_blocks(
-        "# 产品概述\n"
-        "这是概述正文。\n"
-        "## 功能特性\n"
-        "特性一说明。\n"
-        "## 部署要求\n"
-        "要求说明。"
+        "# 产品概述\n这是概述正文。\n## 功能特性\n特性一说明。\n## 部署要求\n要求说明。"
     )
     chunks = chunk_document(blocks, doc_id="doc1", chunk_size=800, overlap=0)
     assert len(chunks) == 3

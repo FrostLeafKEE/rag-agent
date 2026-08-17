@@ -13,7 +13,14 @@ logger = logging.getLogger(__name__)
 
 # 允许的 action 集合（防注入：只写白名单值）
 VALID_ACTIONS = {
-    "register", "login", "login_failed", "upload", "delete", "denied", "user_admin", "redact",
+    "register",
+    "login",
+    "login_failed",
+    "upload",
+    "delete",
+    "denied",
+    "user_admin",
+    "redact",
 }
 
 

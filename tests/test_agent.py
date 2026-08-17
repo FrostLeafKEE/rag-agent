@@ -129,9 +129,7 @@ def test_route_parse_failure_defaults_to_qa(monkeypatch: pytest.MonkeyPatch) -> 
             return "不是 JSON"
 
     monkeypatch.setattr("app.agent.nodes.get_llm", lambda: BrokenLLM())
-    monkeypatch.setattr(
-        "app.agent.nodes.run_search", lambda *a, **k: [_chunk(0.9)]
-    )
+    monkeypatch.setattr("app.agent.nodes.run_search", lambda *a, **k: [_chunk(0.9)])
     result = asyncio.run(agent_graph.ainvoke({"question": "权限过滤", "top_k": 5}))
     assert result["intent"] == "qa"  # 解析失败兜底
     assert len(result["messages"]) == 2
@@ -190,9 +188,7 @@ def test_json_format_adds_instruction(monkeypatch: pytest.MonkeyPatch) -> None:
     """结构化输出：format=json 时系统提示词追加 JSON 指令。"""
     llm = FakeLLM(intent="qa")
     monkeypatch.setattr("app.agent.nodes.get_llm", lambda: llm)
-    monkeypatch.setattr(
-        "app.agent.nodes.run_search", lambda *a, **k: [_chunk(0.9)]
-    )
+    monkeypatch.setattr("app.agent.nodes.run_search", lambda *a, **k: [_chunk(0.9)])
     result = asyncio.run(
         agent_graph.ainvoke({"question": "列出部署要求", "top_k": 5, "format": "json"})
     )

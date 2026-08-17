@@ -39,9 +39,7 @@ def should_stop() -> bool:
 
 
 async def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     _register_signal_handlers()
     await worker_loop(process_ingestion, should_stop=should_stop)
 

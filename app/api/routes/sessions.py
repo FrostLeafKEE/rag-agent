@@ -27,9 +27,7 @@ class FeedbackRequest(BaseModel):
     feedback: str = Field(pattern="^(up|down)$")
 
 
-async def _get_owned_session(
-    session_id: int, user: User, session: AsyncSession
-) -> ChatSession:
+async def _get_owned_session(session_id: int, user: User, session: AsyncSession) -> ChatSession:
     sess = await session.get(ChatSession, session_id)
     if sess is None or sess.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "会话不存在")
@@ -71,9 +69,7 @@ async def list_messages(
 ) -> dict:
     await _get_owned_session(session_id, user, session)
     rows = await session.scalars(
-        select(ChatMessage)
-        .where(ChatMessage.session_id == session_id)
-        .order_by(ChatMessage.id)
+        select(ChatMessage).where(ChatMessage.session_id == session_id).order_by(ChatMessage.id)
     )
     return {"items": [m.to_dict() for m in rows]}
 

@@ -32,6 +32,7 @@ def _chunk(score: float = 0.9, content: str = "权限过滤在检索层执行") 
 
 # ---- 别名替换逻辑 ----
 
+
 def test_expand_basic(tmp_path: Path) -> None:
     cfg = _write_terms(tmp_path / "t.json", {"发版": "发布", "离职": "注销"})
     assert expand_terms("系统今天发版了吗", str(cfg)) == ["系统今天发布了吗"]
@@ -72,9 +73,8 @@ def test_load_terms_bad_json(tmp_path: Path) -> None:
 
 # ---- 图内变体注入 ----
 
-def test_term_expand_node_injects_variant(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+
+def test_term_expand_node_injects_variant(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from app.agent import nodes
 
     cfg = _write_terms(tmp_path / "t.json", {"发版": "发布"})
@@ -85,9 +85,7 @@ def test_term_expand_node_injects_variant(
     assert result["trace"]["term_variants"] == ["系统发布频率"]
 
 
-def test_term_expand_disabled(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_term_expand_disabled(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from app.agent import nodes
 
     cfg = _write_terms(tmp_path / "t.json", {"发版": "发布"})
@@ -96,15 +94,11 @@ def test_term_expand_disabled(
         "get_settings",
         lambda: Settings(term_config=str(cfg), term_expand_enabled=False),
     )
-    result = asyncio.run(
-        nodes.term_expand({"question": "发版", "queries": ["发版"], "trace": {}})
-    )
+    result = asyncio.run(nodes.term_expand({"question": "发版", "queries": ["发版"], "trace": {}}))
     assert result["queries"] == ["发版"]
 
 
-def test_term_expand_no_hit_passthrough(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_term_expand_no_hit_passthrough(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from app.agent import nodes
 
     cfg = _write_terms(tmp_path / "t.json", {"发版": "发布"})
@@ -140,9 +134,7 @@ def test_graph_term_variant_reaches_retrieval(
 
     cfg = _write_terms(tmp_path / "t.json", {"发版": "发布"})
     monkeypatch.setattr("app.agent.nodes.get_llm", lambda: FakeLLM())
-    monkeypatch.setattr(
-        "app.agent.nodes.get_settings", lambda: Settings(term_config=str(cfg))
-    )
+    monkeypatch.setattr("app.agent.nodes.get_settings", lambda: Settings(term_config=str(cfg)))
     seen: list[str] = []
 
     def fake_search(query, **kwargs):  # noqa: ANN001, ANN002
@@ -150,9 +142,7 @@ def test_graph_term_variant_reaches_retrieval(
         return [_chunk(0.9, content=f"结果：{query}")]
 
     monkeypatch.setattr("app.agent.nodes.run_search", fake_search)
-    result = asyncio.run(
-        agent_graph.ainvoke({"question": "系统发版频率", "top_k": 5})
-    )
+    result = asyncio.run(agent_graph.ainvoke({"question": "系统发版频率", "top_k": 5}))
     assert result["trace"]["term_variants"] == ["系统发布频率"]
     assert "系统发布频率" in seen  # 变体确实进入了检索
     assert "系统发版频率" in seen  # 原查询保留

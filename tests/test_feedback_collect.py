@@ -46,7 +46,12 @@ async def _seed_feedback() -> None:
                     feedback="down",
                     created_at=base - timedelta(seconds=10),
                 ),
-                ChatMessage(session_id=sess.id, role="user", content="分块策略是什么", created_at=base - timedelta(seconds=5)),
+                ChatMessage(
+                    session_id=sess.id,
+                    role="user",
+                    content="分块策略是什么",
+                    created_at=base - timedelta(seconds=5),
+                ),
                 ChatMessage(
                     session_id=sess.id,
                     role="assistant",
@@ -55,7 +60,12 @@ async def _seed_feedback() -> None:
                     feedback="down",
                     created_at=base - timedelta(seconds=4),
                 ),
-                ChatMessage(session_id=sess.id, role="user", content="好回答", created_at=base - timedelta(seconds=2)),
+                ChatMessage(
+                    session_id=sess.id,
+                    role="user",
+                    content="好回答",
+                    created_at=base - timedelta(seconds=2),
+                ),
                 ChatMessage(
                     session_id=sess.id,
                     role="assistant",
@@ -86,9 +96,7 @@ def test_collect_pairs_question_with_down_message() -> None:
     asyncio.run(_seed_feedback())
     fake = FakeCollector()
     cases = asyncio.run(
-        collect_feedback_cases(
-            limit=10, classify=fake.classify, make_reference=fake.make_reference
-        )
+        collect_feedback_cases(limit=10, classify=fake.classify, make_reference=fake.make_reference)
     )
     # 只有 1 条有效点踩（up 不算、孤儿跳过）
     assert len(cases) == 1
@@ -104,9 +112,7 @@ def test_collect_skips_non_knowledge_intent() -> None:
     asyncio.run(_seed_feedback())
     fake = FakeCollector(intent="chat")
     cases = asyncio.run(
-        collect_feedback_cases(
-            limit=10, classify=fake.classify, make_reference=fake.make_reference
-        )
+        collect_feedback_cases(limit=10, classify=fake.classify, make_reference=fake.make_reference)
     )
     assert cases == []
 
@@ -116,6 +122,7 @@ def test_collect_deduplicates_with_golden_set() -> None:
     from app.eval.golden_set import GOLDEN_SET
 
     first = GOLDEN_SET[0]
+
     async def seed_one() -> None:
         from datetime import UTC, datetime
 
@@ -129,9 +136,15 @@ def test_collect_deduplicates_with_golden_set() -> None:
             now = datetime.now(UTC)
             session.add_all(
                 [
-                    ChatMessage(session_id=sess.id, role="user", content=first.question, created_at=now),
                     ChatMessage(
-                        session_id=sess.id, role="assistant", content="差", feedback="down", created_at=now
+                        session_id=sess.id, role="user", content=first.question, created_at=now
+                    ),
+                    ChatMessage(
+                        session_id=sess.id,
+                        role="assistant",
+                        content="差",
+                        feedback="down",
+                        created_at=now,
                     ),
                 ]
             )
@@ -140,24 +153,24 @@ def test_collect_deduplicates_with_golden_set() -> None:
     asyncio.run(seed_one())
     fake = FakeCollector()
     cases = asyncio.run(
-        collect_feedback_cases(
-            limit=10, classify=fake.classify, make_reference=fake.make_reference
-        )
+        collect_feedback_cases(limit=10, classify=fake.classify, make_reference=fake.make_reference)
     )
     assert all(c["question"] != first.question for c in cases)
 
 
-def test_feedback_cases_file_roundtrip(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
-) -> None:
+def test_feedback_cases_file_roundtrip(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     """append → load_feedback_cases → all_cases 全链路（tmp 文件）。"""
     tmp = tmp_path / "feedback_cases.json"
     monkeypatch.setattr(golden_set, "FEEDBACK_CASES_PATH", tmp)
 
     cases = [
         {
-            "question": "部门文档数量", "doc_id": "", "section_prefix": "",
-            "intent": "qa", "reference": "人事部 3 篇", "source": "feedback:1",
+            "question": "部门文档数量",
+            "doc_id": "",
+            "section_prefix": "",
+            "intent": "qa",
+            "reference": "人事部 3 篇",
+            "source": "feedback:1",
         }
     ]
     assert append_feedback_cases(cases) == 1

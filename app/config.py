@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     # ---- 安全 ----
     jwt_secret: str = "dev-only-secret-change-me"
     jwt_expire_minutes: int = 1440
+    auth_disable_signup: bool = False  # 关闭开放注册（R1）：生产环境必须显式开启
 
     # ---- Agent（FR-17/19/23/24）----
     crag_min_score: float = 0.25  # rerank top1 低于此值触发查询重写
@@ -90,6 +91,10 @@ class Settings(BaseSettings):
                 raise ValueError("生产环境必须配置 ≥32 位的随机 jwt_secret（环境变量 JWT_SECRET）")
             if self.debug:
                 raise ValueError("生产环境必须设置 DEBUG=false（500 错误栈会泄露内部信息）")
+            if not self.auth_disable_signup:
+                raise ValueError(
+                    "生产环境必须设置 AUTH_DISABLE_SIGNUP=true（账号由管理员创建，关闭开放注册）"
+                )
         return self
 
 

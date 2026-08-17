@@ -67,9 +67,7 @@ async def record_login_failure(username: str) -> None:
             if count == 1:
                 await client.expire(key, _LOGIN_FAIL_WINDOW)
             if count >= _LOGIN_FAIL_LIMIT:
-                await client.set(
-                    await _login_lock_key(username), "1", ex=_LOGIN_FAIL_WINDOW
-                )
+                await client.set(await _login_lock_key(username), "1", ex=_LOGIN_FAIL_WINDOW)
                 await client.delete(key)
         finally:
             await client.aclose()
@@ -116,6 +114,9 @@ async def register(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    if get_settings().auth_disable_signup:
+        # 生产默认关闭开放注册（R1）：账号统一由 super_admin 在用户管理页创建
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "开放注册已关闭，请联系管理员创建账号")
     exists = await session.scalar(select(User).where(User.username == body.username))
     if exists:
         raise HTTPException(status.HTTP_409_CONFLICT, "用户名已存在")

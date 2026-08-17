@@ -120,9 +120,7 @@ async def upload(
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "文件超过 50MB 限制")
     if not _check_magic_bytes(ext, content):
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, f"文件内容与扩展名 {ext} 不匹配"
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"文件内容与扩展名 {ext} 不匹配")
 
     final_doc_id = _slugify(file.filename or "doc")
     if doc_id is not None:
@@ -167,9 +165,7 @@ async def upload(
     # 摄入任务入队（Redis Stream，独立 worker 消费）。
     # 入队失败：清理已写文件 + DB 行置 failed，不留孤儿（FIX P1-7）
     try:
-        await enqueue(
-            final_doc_id, stored_path, department, file.filename or "", user.username
-        )
+        await enqueue(final_doc_id, stored_path, department, file.filename or "", user.username)
     except Exception:
         await asyncio.to_thread(stored_path.unlink, missing_ok=True)
         doc.status = "failed"
@@ -268,8 +264,11 @@ async def delete_document(
     visible = await user_visible_departments(user)
     if visible is not None and doc.department not in visible:
         await log_audit(
-            session, user.username, "denied",
-            resource=doc_id, detail="越权删除文档（超出负责部门）",
+            session,
+            user.username,
+            "denied",
+            resource=doc_id,
+            detail="越权删除文档（超出负责部门）",
         )
         await session.commit()  # 审计先落库再抛错（请求级会话异常后回滚）
         raise HTTPException(status.HTTP_403_FORBIDDEN, "无权删除该文档")

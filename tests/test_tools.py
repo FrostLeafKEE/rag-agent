@@ -38,13 +38,17 @@ async def _seed_documents() -> None:
         await session.execute(text("DELETE FROM documents"))
         session.add(
             Document(
-                doc_id="D1", title="入职手册", source_name="入职手册.pdf",
+                doc_id="D1",
+                title="入职手册",
+                source_name="入职手册.pdf",
                 department="人事部",
             )
         )
         session.add(
             Document(
-                doc_id="D2", title="发布规范", source_name="发布规范.md",
+                doc_id="D2",
+                title="发布规范",
+                source_name="发布规范.md",
                 department="研发部",
             )
         )
@@ -52,6 +56,7 @@ async def _seed_documents() -> None:
 
 
 # ---- 只读 SQL 安全约束 ----
+
 
 def test_safe_select_rejects_non_select() -> None:
     with pytest.raises(ValueError, match="SELECT"):
@@ -86,6 +91,7 @@ def test_safe_select_keeps_existing_limit() -> None:
 
 # ---- 工具执行（SQLite 真实查询）----
 
+
 def test_query_documents_unknown_tool() -> None:
     result = asyncio.run(tool_registry.call("not_exist", {}))
     assert result["ok"] is False
@@ -119,6 +125,7 @@ def test_query_documents_sql_injection_blocked() -> None:
 
 
 # ---- plan_tools 节点 ----
+
 
 class FakeLLM:
     """按提示词特征返回预设结果；stream 在图内不应被调用。"""
@@ -198,6 +205,7 @@ def test_plan_tools_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
 
 # ---- 图集成：工具结果进入生成上下文 ----
 
+
 def test_graph_integration_tool_context(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.agent.graph import agent_graph
 
@@ -211,9 +219,7 @@ def test_graph_integration_tool_context(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(
         "app.agent.nodes.run_search", lambda *a, **k: [_chunk(0.9, content="入职手册")]
     )
-    result = asyncio.run(
-        agent_graph.ainvoke({"question": "各部门有多少文档", "top_k": 5})
-    )
+    result = asyncio.run(agent_graph.ainvoke({"question": "各部门有多少文档", "top_k": 5}))
     assert result["tool_results"][0]["ok"] is True
     system = result["messages"][0]["content"]
     assert "结构化数据" in system

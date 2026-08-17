@@ -31,10 +31,7 @@ async def main() -> None:
         print(f"\n=== {kind}：{question}")
         print(f"intent={result.get('intent')} tools={len(tools)}")
         for t in tools:
-            print(
-                f"  tool={t['tool']} ok={t['ok']} "
-                f"result={t.get('result') or t.get('error')}"
-            )
+            print(f"  tool={t['tool']} ok={t['ok']} result={t.get('result') or t.get('error')}")
         if ok_tools:
             has_context = "结构化数据" in result["messages"][0]["content"]
             print(f"  结构化数据已注入生成上下文：{has_context}")

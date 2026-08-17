@@ -21,6 +21,7 @@ _client = TestClient(app)
 @pytest.fixture()
 def cleanup_users(_sqlite_engine):
     yield
+
     async def clean() -> None:
         factory = async_sessionmaker(_sqlite_engine, expire_on_commit=False)
         async with factory() as session:
@@ -97,6 +98,7 @@ def test_me_with_garbage_token_rejected() -> None:
 
 def test_inactive_user_cannot_login(cleanup_users: None, _sqlite_engine) -> None:
     _register("itest_inactive")
+
     async def deactivate() -> None:
         factory = async_sessionmaker(_sqlite_engine, expire_on_commit=False)
         async with factory() as session:

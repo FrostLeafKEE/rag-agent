@@ -21,7 +21,9 @@ TEST_DOC_ID = "itest-doc"
 @pytest.fixture(autouse=True)
 def _auth():
     # 文档管理已管理员化：上传/删除/列表测试统一以 super_admin 身份执行
-    test_user = User(id=1, username="doc_tester", role="super_admin", department="研发部", is_active=True)
+    test_user = User(
+        id=1, username="doc_tester", role="super_admin", department="研发部", is_active=True
+    )
     app.dependency_overrides[get_current_user] = lambda: test_user
     yield
     app.dependency_overrides.pop(get_current_user, None)
@@ -30,6 +32,7 @@ def _auth():
 @pytest.fixture()
 def _cleanup(_sqlite_engine):
     yield
+
     async def clean() -> None:
         factory = async_sessionmaker(_sqlite_engine, expire_on_commit=False)
         async with factory() as session:
@@ -42,6 +45,7 @@ def _cleanup(_sqlite_engine):
 @pytest.fixture()
 def _no_enqueue(monkeypatch: pytest.MonkeyPatch):
     """上传不入真实队列（测试不启动 worker）。"""
+
     async def fake_enqueue(*args, **kwargs):  # noqa: ANN002, ANN003
         return None
 
@@ -157,17 +161,13 @@ def _seed_admin_depts(user_id: int, departments: list[str]) -> None:
         from app.db import session_factory
 
         async with session_factory() as session:
-            session.add_all(
-                AdminDepartment(user_id=user_id, department=d) for d in departments
-            )
+            session.add_all(AdminDepartment(user_id=user_id, department=d) for d in departments)
             await session.commit()
 
     asyncio.run(_seed())
 
 
-def test_list_documents_scoped_by_admin_department(
-    _cleanup: None, _no_enqueue: None
-) -> None:
+def test_list_documents_scoped_by_admin_department(_cleanup: None, _no_enqueue: None) -> None:
     """RBAC：admin 仅见负责部门；普通用户 403。"""
     _upload()
     time.sleep(0.3)
@@ -202,9 +202,7 @@ def test_delete_document(
     deleted = []
     monkeypatch.setattr(
         "app.ingestion.indexer.MilvusIndexer",
-        lambda *a, **k: type(
-            "FakeIdx", (), {"delete_by_doc": lambda self, d: deleted.append(d)}
-        )(),
+        lambda *a, **k: type("FakeIdx", (), {"delete_by_doc": lambda self, d: deleted.append(d)})(),
     )
     resp = _client.delete(f"/api/v1/documents/{TEST_DOC_ID}")
     assert resp.status_code == 200

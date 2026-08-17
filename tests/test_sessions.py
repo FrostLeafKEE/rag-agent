@@ -28,6 +28,7 @@ def _auth():
 @pytest.fixture()
 def _cleanup(_sqlite_engine):
     yield
+
     async def clean() -> None:
         factory = async_sessionmaker(_sqlite_engine, expire_on_commit=False)
         async with factory() as session:
@@ -70,6 +71,7 @@ def test_other_user_cannot_access(_cleanup: None) -> None:
 
 def test_feedback(_cleanup: None, _sqlite_engine) -> None:
     sess = _client.post("/api/v1/sessions", json={"title": "反馈会话"}).json()
+
     # 手工插入一条 assistant 消息
     async def add_msg() -> int:
         factory = async_sessionmaker(_sqlite_engine, expire_on_commit=False)
@@ -101,9 +103,7 @@ def test_qa_creates_session_and_saves_messages(
     monkeypatch.setattr("app.agent.nodes.run_search", lambda *a, **k: _fake_chunks())
     monkeypatch.setattr("app.agent.service.get_llm", lambda: FakeStreamLLM())
 
-    resp = _client.post(
-        "/api/v1/qa/ask", json={"question": "权限过滤怎么做？"}
-    )
+    resp = _client.post("/api/v1/qa/ask", json={"question": "权限过滤怎么做？"})
     assert resp.status_code == 200
     assert "event: session" in resp.text
 

@@ -142,18 +142,14 @@ async def update_user(
     if user.id == admin.id and (body.role is not None or body.is_active is False):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "不能修改自己的角色或停用自己")
     # 防锁死：不能把最后一个 super_admin 降级/停用
-    if user.role == "super_admin" and (
-        body.role is not None or body.is_active is False
-    ):
+    if user.role == "super_admin" and (body.role is not None or body.is_active is False):
         remaining = await session.scalar(
             select(User.id).where(
                 User.role == "super_admin", User.is_active.is_(True), User.id != user.id
             )
         )
         if remaining is None:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST, "必须保留至少一个超级管理员"
-            )
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "必须保留至少一个超级管理员")
     if body.role is not None:
         user.role = body.role
     if body.department is not None:
@@ -206,16 +202,11 @@ async def set_admin_departments(
             "仅部门管理员（admin）可分配负责部门",
         )
     if not body.departments:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "负责部门不能为空（至少一个）"
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "负责部门不能为空（至少一个）")
     _check_departments(body.departments)
-    await session.execute(
-        delete(AdminDepartment).where(AdminDepartment.user_id == user_id)
-    )
+    await session.execute(delete(AdminDepartment).where(AdminDepartment.user_id == user_id))
     session.add_all(
-        AdminDepartment(user_id=user_id, department=d)
-        for d in dict.fromkeys(body.departments)
+        AdminDepartment(user_id=user_id, department=d) for d in dict.fromkeys(body.departments)
     )
     await session.commit()
     await log_audit(

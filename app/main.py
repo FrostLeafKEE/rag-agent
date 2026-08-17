@@ -35,6 +35,17 @@ app = FastAPI(
 
 app.middleware("http")(metrics_middleware)
 
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    """安全响应头（R2/ROADMAP）：防 MIME 嗅探 / 点击劫持 / 泄露来源。"""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
+
+
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router)
 app.include_router(admin.router)
@@ -46,6 +57,7 @@ app.include_router(qa.router, tags=["qa"])
 @app.get("/metrics", include_in_schema=False)
 async def metrics():
     return metrics_response()
+
 
 # Vue3 管理台（构建产物；hash 路由无需 SPA fallback）
 _frontend = Path(__file__).parent.parent / "web-ui" / "dist"
