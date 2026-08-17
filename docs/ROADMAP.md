@@ -22,11 +22,11 @@
 
 | # | 项目 | 来源 | 工作量 | 内容与验收 |
 |---|---|---|---|---|
-| R7 | **审计查询增强** | D4 | M | 分页 + 按 action 过滤 + CSV 导出。验收：管理端可按类型查询并导出 |
-| R8 | **CI 流水线** | A2 | M | `.github/workflows/ci.yml`：ruff(0) → pytest(全绿) → vite build；评估 job 手动触发。验收：push 触发全绿 |
-| R9 | **pre-commit** | A3 | S | ruff check/format + uv lock --check。验收：违规提交被拦截 |
-| R10 | **Runbook** | I2 | S | docs/RUNBOOK.md：≥6 个已知故障模式（worker 残留/websockets 锁/Milvus 挂起/Redis 假死/Langfuse 事件缺失/上游 LLM 故障），症状→诊断→处置→预防。验收：覆盖 ≥6 模式 |
-| R11 | **CHANGELOG + 版本策略** | I1 | S | 语义化版本 + CHANGELOG.md + 发布检查单。验收：最近变更已记录 |
+| R7 | **审计查询增强** ✅ | | D4 | M | 分页 + 按 action 过滤 + CSV 导出。验收：管理端可按类型查询并导出 |
+| R8 | **CI 流水线** ✅ | | A2 | M | `.github/workflows/ci.yml`：ruff(0) → pytest(全绿) → vite build；评估 job 手动触发。验收：push 触发全绿 |
+| R9 | **pre-commit** ✅ | | A3 | S | ruff check/format + uv lock --check。验收：违规提交被拦截 |
+| R10 | **Runbook** ✅ | | I2 | S | docs/RUNBOOK.md：≥6 个已知故障模式（worker 残留/websockets 锁/Milvus 挂起/Redis 假死/Langfuse 事件缺失/上游 LLM 故障），症状→诊断→处置→预防。验收：覆盖 ≥6 模式 |
+| R11 | **CHANGELOG + 版本策略** ✅ | | I1 | S | 语义化版本 + CHANGELOG.md + 发布检查单。验收：最近变更已记录 |
 
 ## 第三批：数据治理（试用期暴露真实数据量后）
 

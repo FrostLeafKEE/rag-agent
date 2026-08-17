@@ -128,6 +128,11 @@ export const api = {
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ departments }),
     }).then(handle),
-  listAudit: (limit = 50) =>
-    fetch(API + `/api/v1/admin/audit?limit=${limit}`, { headers: authHeaders() }).then(handle),
+  listAudit: (params = {}) => {
+    const q = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== '')
+    ).toString()
+    return fetch(API + `/api/v1/admin/audit?${q}`, { headers: authHeaders() }).then(handle)
+  },
+  exportAudit: () => fetch(API + '/api/v1/admin/audit/export', { headers: authHeaders() }).then((r) => r.text()),
 }

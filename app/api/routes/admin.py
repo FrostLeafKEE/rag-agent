@@ -8,14 +8,16 @@ RBAC 扩展（docs/RBAC_PLAN.md）：
 
 from __future__ import annotations
 
+import csv
+import io
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.audit import log_audit
+from app.api.audit import VALID_ACTIONS, log_audit
 from app.api.deps import get_current_user
 from app.api.security import hash_password
 from app.db import get_session
@@ -222,12 +224,52 @@ async def set_admin_departments(
 @router.get("/audit")
 async def list_audit(
     limit: int = 50,
+    offset: int = 0,
+    action: str | None = None,
     admin: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """审计日志查询（FR-34，super_admin 专属）。"""
+    """审计日志查询（FR-34，super_admin 专属；R7：支持按 action 过滤与分页）。"""
+    _require_super_admin(admin)
+    query = select(AuditLog).order_by(AuditLog.id.desc())
+    if action:
+        if action not in VALID_ACTIONS:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"非法 action：{action}")
+        query = query.where(AuditLog.action == action)
+    total = await session.scalar(select(func.count()).select_from(query.subquery())) or 0
+    rows = await session.scalars(
+        query.offset(max(0, offset)).limit(max(1, min(limit, 500)))
+    )
+    return {
+        "items": [a.to_dict() for a in rows],
+        "total": total,
+        "limit": max(1, min(limit, 500)),
+        "offset": max(0, offset),
+    }
+
+
+@router.get("/audit/export")
+async def export_audit(
+    admin: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """审计日志 CSV 导出（R7：合规审计用，最多 5000 条）。"""
     _require_super_admin(admin)
     rows = await session.scalars(
-        select(AuditLog).order_by(AuditLog.id.desc()).limit(max(1, min(limit, 500)))
+        select(AuditLog).order_by(AuditLog.id.desc()).limit(5000)
     )
-    return {"items": [a.to_dict() for a in rows]}
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["id", "user", "action", "resource", "detail", "ip", "created_at"])
+    for a in rows:
+        writer.writerow(
+            [
+                a.id, a.user, a.action, a.resource, a.detail, a.ip,
+                a.created_at.isoformat() if a.created_at else "",
+            ]
+        )
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="audit_log.csv"'},
+    )

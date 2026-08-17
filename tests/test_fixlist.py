@@ -216,6 +216,33 @@ def test_security_headers_present() -> None:
     assert resp.headers.get("referrer-policy") == "no-referrer"
 
 
+# ---- R7 审计查询增强（ROADMAP 第二批）----
+
+def test_audit_filter_pagination_and_export(_no_enqueue: None) -> None:
+    """action 过滤 + 分页总数 + CSV 导出。"""
+    _client.post(
+        "/api/v1/documents/upload",
+        files={"file": ("fx_audit.md", b"# audit", "text/markdown")},
+        data={"department": "研发部", "doc_id": "fx-audit-doc"},
+    )
+    # action 过滤
+    r = _client.get("/api/v1/admin/audit?action=upload")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] >= 1
+    assert all(i["action"] == "upload" for i in body["items"])
+    # 分页结构
+    r2 = _client.get("/api/v1/admin/audit?limit=5&offset=0")
+    assert r2.json()["limit"] == 5
+    # 非法 action
+    assert _client.get("/api/v1/admin/audit?action=hack").status_code == 422
+    # CSV 导出
+    csv_resp = _client.get("/api/v1/admin/audit/export")
+    assert csv_resp.status_code == 200
+    assert "text/csv" in csv_resp.headers["content-type"]
+    assert csv_resp.text.startswith("id,user,action")
+
+
 # ---- P2-14 指标模板路径 ----
 
 
