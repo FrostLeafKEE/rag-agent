@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "replace_with": "****",
+  "rules": [
+    {
+      "type": "word",
+      "name": "内部代号",
+      "words": ["北极星项目", "深海计划"]
+    }
+  ]
+}

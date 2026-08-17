@@ -1,0 +1,54 @@
+[project]
+name = "rag-enterprise"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "bcrypt>=5.0.0",
+    "docling>=2.120.1",
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "langchain-community<0.4",
+    "langfuse>=4.14.4",
+    "minio>=7.2.20",
+    "paddleocr>=3.7.0",
+    "paddlepaddle>=3.3.1",
+    "prometheus-client>=0.26.0",
+    "pydantic-settings>=2.15.0",
+    "pyjwt>=2.13.0",
+    "pymilvus>=2.5,<3",
+    "pymupdf>=1.28.2",
+    "python-multipart>=0.0.32",
+    "ragas>=0.4.3",
+    "redis>=8.1.0",
+    "sqlalchemy[asyncio]>=2.0.52",
+    "structlog>=26.1.0",
+    "uvicorn[standard]>=0.52",
+    "websockets==15.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "aiosqlite>=0.22.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.3",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+# B008：FastAPI 依赖注入标准模式（Depends() 作参数默认值）
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = ["."]
+filterwarnings = [
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:DeprecationWarning",
+]
+

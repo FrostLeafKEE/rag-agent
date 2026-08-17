@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# 环境与密钥（.env.example 作为模板入库）
+.env
+
+# Docker 数据卷（本机数据，不入库）
+volumes/
+
+# IDE / 系统
+.idea/
+.vscode/
+.DS_Store
+data/
+
+# 前端
+web-ui/node_modules/
+web-ui/dist/
+
+# 测试残留
+tests/_test.db

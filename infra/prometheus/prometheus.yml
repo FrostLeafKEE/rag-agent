@@ -1,0 +1,9 @@
+# Prometheus 抓取配置：API 指标（开发期从宿主机抓取）
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: rag-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:8000"]

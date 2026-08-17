@@ -1,0 +1,246 @@
+# 企业级 RAG Agent — P0 基础设施编排
+# 用法：docker compose up -d  （数据落在 ./volumes/，已被 .gitignore 排除）
+#
+# 服务端口：
+#   Milvus   19530 (gRPC) / 9091 (metrics)
+#   Postgres 5432         （库：rag 业务元数据 / langfuse 可观测）
+#   Redis    6379
+#   MinIO    9000 (API) / 9001 (控制台)
+#   Langfuse 3000         （默认账号见 .env 注释）
+
+name: rag-enterprise
+
+x-milvus-env: &milvus-env
+  ETCD_ENDPOINTS: etcd:2379
+  MINIO_ADDRESS: milvus-minio:9000
+
+services:
+  # ---------- 向量库（Milvus standalone） ----------
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.18
+    container_name: rag-etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+    restart: unless-stopped
+
+  # Milvus 内部的 MinIO（向量数据落盘，仅容器网络内使用，不映射宿主端口）
+  milvus-minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: rag-milvus-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus-minio:/minio_data
+    command: minio server /minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+    restart: unless-stopped
+
+  milvus:
+    image: milvusdb/milvus:v2.5.4
+    container_name: rag-milvus
+    command: ["milvus", "run", "standalone"]
+    environment: *milvus-env
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
+    ports:
+      - "19530:19530"   # gRPC 客户端
+      - "9091:9091"     # metrics
+    depends_on:
+      etcd:
+        condition: service_healthy
+      milvus-minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------- 元数据与业务存储 ----------
+  postgres:
+    image: postgres:16-alpine
+    container_name: rag-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ragpass}
+      POSTGRES_DB: rag
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/postgres:/var/lib/postgresql/data
+      - ./infra/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rag} -d rag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/redis:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------- 业务对象存储（原始文档归档） ----------
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: rag-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"     # S3 API
+      - "9001:9001"     # 控制台
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/data
+    command: minio server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------- 可观测性（Langfuse v3：ClickHouse 存 trace + Postgres 存元数据） ----------
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    container_name: rag-clickhouse
+    environment:
+      CLICKHOUSE_DB: langfuse
+      CLICKHOUSE_USER: langfuse
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-langfuse}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./infra/clickhouse/listen.xml:/etc/clickhouse-server/config.d/listen.xml:ro
+    healthcheck:
+      # 用 127.0.0.1 而非 localhost：容器内 localhost 解析为 IPv6，ClickHouse 仅监听 IPv4
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  langfuse:
+    image: langfuse/langfuse:3
+    container_name: rag-langfuse
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rag}:${POSTGRES_PASSWORD:-ragpass}@postgres:5432/langfuse
+      REDIS_CONNECTION_STRING: redis://redis:6379
+      CLICKHOUSE_URL: http://langfuse:${CLICKHOUSE_PASSWORD:-langfuse}@clickhouse:8123/langfuse
+      # golang-migrate 的 clickhouse:// 协议走 native TCP 端口 9000（8123 是 HTTP，会挂起超时）
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse:${CLICKHOUSE_PASSWORD:-langfuse}@clickhouse:9000/langfuse
+      CLICKHOUSE_USER: langfuse
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-langfuse}
+      # 单节点 ClickHouse：禁用集群迁移（否则走 ReplicatedMergeTree，需要 keeper，迁移会卡死）
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      CLICKHOUSE_DB: langfuse
+      NEXTAUTH_URL: ${LANGFUSE_NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:?在 .env 中设置 LANGFUSE_NEXTAUTH_SECRET}
+      SALT: ${LANGFUSE_SALT:?在 .env 中设置 LANGFUSE_SALT}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:?在 .env 中设置 LANGFUSE_ENCRYPTION_KEY}
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse-events
+      # v3 事件存储走 MinIO（专用前缀变量；S3_* 通用变量对事件上传不生效）
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      # P0 阶段允许注册，生产环境应关闭
+      AUTH_DISABLE_SIGNUP: "false"
+    restart: unless-stopped
+
+  # ---------- Langfuse 事件消费 worker（v3 独立进程，缺它事件不落库） ----------
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    container_name: rag-langfuse-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rag}:${POSTGRES_PASSWORD:-ragpass}@postgres:5432/langfuse
+      REDIS_CONNECTION_STRING: redis://redis:6379
+      CLICKHOUSE_URL: http://langfuse:${CLICKHOUSE_PASSWORD:-langfuse}@clickhouse:8123/langfuse
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse:${CLICKHOUSE_PASSWORD:-langfuse}@clickhouse:9000/langfuse
+      CLICKHOUSE_USER: langfuse
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-langfuse}
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      CLICKHOUSE_DB: langfuse
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:?在 .env 中设置 LANGFUSE_NEXTAUTH_SECRET}
+      SALT: ${LANGFUSE_SALT:?在 .env 中设置 LANGFUSE_SALT}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:?在 .env 中设置 LANGFUSE_ENCRYPTION_KEY}
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse-events
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+    restart: unless-stopped
+
+  # ---------- 指标面板（Prometheus + Grafana，FR-42） ----------
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: rag-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/prometheus:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: rag-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/grafana:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  # ClickHouse 用 named volume：Windows bind mount 不支持其 rename 语义
+  clickhouse_data:

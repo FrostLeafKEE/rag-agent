@@ -1,0 +1,4 @@
+<!-- 覆盖默认监听：Docker Desktop 网络不支持 IPv6，强制 IPv4 -->
+<clickhouse>
+    <listen_host>0.0.0.0</listen_host>
+</clickhouse>

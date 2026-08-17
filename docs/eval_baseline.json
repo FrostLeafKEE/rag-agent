@@ -1,0 +1,11 @@
+{
+  "metrics": {
+    "recall_at_k": 0.852,
+    "mrr": 0.796,
+    "faithfulness": 0.931,
+    "answer_relevancy": 0.681,
+    "context_precision": 0.918,
+    "chat_refusal": 1.0
+  },
+  "cases": 27
+}

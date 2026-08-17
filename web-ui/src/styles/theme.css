@@ -1,0 +1,54 @@
+/* 企业主题：左侧渐变暗紫导航 + 右侧亮色内容区（参考图布局）
+   主色用柔和的紫罗兰（#7c6cf0 系），避免高饱和 */
+:root {
+  --prts-violet: #7c6cf0;
+  --prts-bg: #f6f4fb;
+
+  /* 柔和紫主色 */
+  --el-color-primary: #7c6cf0;
+  --el-color-primary-light-3: #9d91f5;
+  --el-color-primary-light-5: #beb6f8;
+  --el-color-primary-light-7: #dedafb;
+  --el-color-primary-light-8: #eceafd;
+  --el-color-primary-light-9: #f5f4fe;
+  --el-color-primary-dark-2: #6455cf;
+
+  /* 亮色表面 */
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #f6f4fb;
+  --el-bg-color-overlay: #ffffff;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #f7f6fb;
+  --el-fill-color-lighter: #f0eef8;
+  --el-border-color: #ded9f0;
+  --el-border-color-light: #e6e2f4;
+  --el-border-color-lighter: #ece9f7;
+  --el-text-color-primary: #33304a;
+  --el-text-color-regular: #555170;
+  --el-text-color-secondary: #8b87a5;
+  --el-text-color-placeholder: #b0accc;
+
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+}
+
+html, body {
+  background: var(--prts-bg);
+  color: var(--el-text-color-primary);
+}
+
+/* 细滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb {
+  background: #d5d0ea;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: #beb6dc; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 通用卡片质感 */
+.prts-card {
+  border-radius: 14px !important;
+  border: 1px solid #ece9f7 !important;
+  box-shadow: 0 6px 24px rgba(76, 29, 149, 0.06) !important;
+}
