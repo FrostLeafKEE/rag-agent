@@ -1,6 +1,7 @@
 # 企业级 RAG Agent — 知识库问答平台
 
 > 把内部文档变成可问答的知识库：混合检索 + Agent 编排 + 引用溯源 + RBAC 权限 + 评估回归 + 全链路可观测。
+> 当前版本 **0.2.0**（[CHANGELOG](CHANGELOG.md)）· 173 测试全绿 · ruff/mypy 0 错误
 
 ---
 
@@ -188,14 +189,28 @@ uv run python -m app.cli.create_admin --username admin --password '强密码' --
 ├── config/               # connectors.json（目录监控）/ terms.json（术语）/ redaction.json（脱敏）
 ├── infra/                # docker-compose / prometheus / grafana
 ├── docs/                 # 全部文档（见 §10）
-└── tests/                # 160 个测试（含安全回归 + RBAC 矩阵）
+└── tests/                # 173 个测试（含安全回归 + RBAC 矩阵 + 审查回归）
 ```
 
 ---
 
 ## 8. 质量与评估
 
-**测试**：160 个用例全绿（pytest）——单元/API/集成/安全回归/RBAC 矩阵。
+**测试**：173 个用例全绿（pytest）——单元/API/集成/安全回归/RBAC 矩阵/审查回归。
+
+**质量门禁（本地 + CI 一致）**：
+
+```bash
+uv run ruff check .          # 0 错误
+uv run ruff format --check . # 0 待格式化
+uv run mypy app/             # 0 错误（54 文件）
+uv run pytest tests/ -q      # 173 全绿
+```
+
+- **CI**：`.github/workflows/ci.yml`（backend 四门禁 + frontend vite build + 手动触发的评估回归）
+- **迁移**：Alembic（`uv run alembic upgrade head`，初始迁移覆盖 7 表；`init_db` 自动感知）
+- **pre-commit**：提交前自动 ruff + lock 检查
+- **版本**：0.2.0（语义化版本，见 CHANGELOG.md）
 
 ```bash
 uv run pytest tests/ -q
@@ -228,8 +243,16 @@ uv run python -m app.eval.feedback_collect      # 点踩样本 → 评估用例
 | 文档 | 内容 |
 |---|---|
 | **[MANUAL.md](docs/MANUAL.md)** | 📖 介绍 · 部署手册 · 使用手册 · 常见问题 |
+| **[CHANGELOG.md](CHANGELOG.md)** | 版本记录（当前 0.2.0，语义化版本策略） |
 | [PRD.md](docs/PRD.md) | 需求（FR-01~46）+ 里程碑 + 附录（实现核对/安全审计记录） |
-| [TECH_STACK.md](docs/TECH_STACK.md) | 选型理由、架构图、数据模型、ADR、评估基线 |
+| [TECH_STACK.md](docs/TECH_STACK.md) | 选型理由、架构图、数据模型、ADR、评估基线、外部依赖降级矩阵 |
+| [ROADMAP.md](docs/ROADMAP.md) | 改进路线图（三批 14 项 + 复审闭环，前两批已完成） |
+| [RUNBOOK.md](docs/RUNBOOK.md) | 运维故障处置手册（9 个故障模式） |
+| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | 贡献指南：PR 检查单、质量门禁、模块依赖方向 |
+| [SECURITY_NOTES.md](docs/SECURITY_NOTES.md) | 依赖漏洞跟踪（CVE 记录 + 每月复核节奏） |
+| [FIX_LIST.md](docs/FIX_LIST.md) | 缺陷级审查清单（22 项已修复并勾选） |
+| [IMPROVEMENT_PLAN.md](docs/IMPROVEMENT_PLAN.md) | 治理级改进建议书（30 项）+ [核验报告](docs/IMPROVEMENT_PLAN_REVIEW.md) |
+| [REAUDIT_FOLLOWUP.md](docs/REAUDIT_FOLLOWUP.md) | 复审报告（准阻塞已修复，处理记录见 ROADMAP） |
 | [P1_PLAN.md](docs/P1_PLAN.md) | 完善阶段 W1~W6（Agent 化/检索增强/管理台/工程化/评估） |
 | [P2_PLAN.md](docs/P2_PLAN.md) | 企业化阶段（工具/反馈/Connector/脱敏/术语表）+ RBAC 扩展 |
 | [RBAC_PLAN.md](docs/RBAC_PLAN.md) | 三角色权限模型设计 |
