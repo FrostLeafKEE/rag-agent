@@ -38,7 +38,9 @@ class HistoryItem(BaseModel):
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
-    history: list[HistoryItem] = Field(default_factory=list, max_length=20)  # 上下文上限，防 token 滥用
+    history: list[HistoryItem] = Field(
+        default_factory=list, max_length=20
+    )  # 上下文上限，防 token 滥用
     top_k: int = Field(default=6, ge=1, le=20)
     format: str = Field(default="", pattern="^(|json)$")  # 结构化输出（FR-26）
     session_id: int | None = None  # 续接会话（FR-30）

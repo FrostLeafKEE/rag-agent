@@ -28,12 +28,18 @@ EMBEDDING_CALLS = Counter("rag_embedding_calls_total", "嵌入 API 调用批次"
 
 
 async def metrics_middleware(request: Request, call_next):
-    """请求指标中间件：计数 + 延迟。"""
+    """请求指标中间件：计数 + 延迟。
+
+    label 用路由模板而非实际路径（FIX P2-14）——动态路径（会话/文档 id）
+    进 label 会造成高基数撑爆 Prometheus 存储；无路由的请求归并 unknown。
+    """
     start = time.perf_counter()
     response = await call_next(request)
     latency = time.perf_counter() - start
-    HTTP_REQUESTS.labels(request.method, request.url.path, str(response.status_code)).inc()
-    HTTP_LATENCY.labels(request.method, request.url.path).observe(latency)
+    route = request.scope.get("route")
+    path = route.path if route is not None else "unknown"
+    HTTP_REQUESTS.labels(request.method, path, str(response.status_code)).inc()
+    HTTP_LATENCY.labels(request.method, path).observe(latency)
     return response
 
 

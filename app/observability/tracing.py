@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -26,22 +27,26 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 _client: Langfuse | None = None
+_client_lock = threading.Lock()  # FIX P2-18：并发首请求防重复初始化
 
 
 def _get_client() -> Langfuse | None:
     global _client
     if _client is not None:
         return _client
-    settings = get_settings()
-    if settings.langfuse_public_key and settings.langfuse_secret_key:
-        _client = Langfuse(
-            public_key=settings.langfuse_public_key,
-            secret_key=settings.langfuse_secret_key,
-            host=settings.langfuse_host,
-        )
-        logger.info("Langfuse trace 已启用：%s", settings.langfuse_host)
-    else:
-        logger.info("未配置 Langfuse key，trace 降级为 noop")
+    with _client_lock:
+        if _client is not None:  # 双检锁：等待期间可能已被其他线程初始化
+            return _client
+        settings = get_settings()
+        if settings.langfuse_public_key and settings.langfuse_secret_key:
+            _client = Langfuse(
+                public_key=settings.langfuse_public_key,
+                secret_key=settings.langfuse_secret_key,
+                host=settings.langfuse_host,
+            )
+            logger.info("Langfuse trace 已启用：%s", settings.langfuse_host)
+        else:
+            logger.info("未配置 Langfuse key，trace 降级为 noop")
     return _client
 
 

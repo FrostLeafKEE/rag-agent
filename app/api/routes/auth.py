@@ -35,8 +35,12 @@ async def _login_fail_key(username: str) -> str:
 
 
 async def _redis() -> aioredis.Redis:
+    # 与 queue.py 保持一致：连接超时 5s 兜底（Redis 假死时快速失败，FIX P1-8）
     return aioredis.from_url(
-        get_settings().redis_url, decode_responses=True, socket_timeout=None
+        get_settings().redis_url,
+        decode_responses=True,
+        socket_timeout=None,
+        socket_connect_timeout=5,
     )
 
 
@@ -83,7 +87,7 @@ async def clear_login_failures(username: str) -> None:
         finally:
             await client.aclose()
     except Exception:  # noqa: BLE001
-        pass
+        logger.warning("登录状态清理失败（Redis 不可用？），不影响登录", exc_info=True)
 
 
 class RegisterRequest(BaseModel):
@@ -140,7 +144,9 @@ async def login(
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
     if await login_is_locked(body.username):
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "失败次数过多，账号已临时锁定，请稍后再试")
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS, "失败次数过多，账号已临时锁定，请稍后再试"
+        )
     user = await session.scalar(select(User).where(User.username == body.username))
     if user is None or not verify_password(body.password, user.password_hash):
         await record_login_failure(body.username)

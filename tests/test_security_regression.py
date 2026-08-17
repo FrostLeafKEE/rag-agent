@@ -64,7 +64,7 @@ def _no_enqueue(monkeypatch: pytest.MonkeyPatch):
 def _upload(filename: str = "sec_test.md", doc_id: str = TEST_DOC_ID, department: str = "研发部"):
     return _client.post(
         "/api/v1/documents/upload",
-        files={"file": (filename, "# 安全测试文档\n内容".encode("utf-8"), "text/markdown")},
+        files={"file": (filename, "# 安全测试文档\n内容".encode(), "text/markdown")},
         data={"department": department, "doc_id": doc_id},
     )
 
@@ -363,8 +363,8 @@ def test_login_lockout_after_repeated_failures() -> None:
     """同一用户名连续失败 5 次后锁定（第 6 次登录 429）。"""
     import asyncio
 
-    from app.api.routes.auth import _LOGIN_FAIL_LIMIT
     from app.api.routes import auth as auth_routes
+    from app.api.routes.auth import _LOGIN_FAIL_LIMIT
 
     username = "sec_lockout_test"
 

@@ -21,6 +21,7 @@ import hashlib
 import json
 import logging
 import shutil
+import signal
 import uuid
 from pathlib import Path
 
@@ -52,10 +53,17 @@ def _path_key(path: Path) -> str:
 
 
 def _doc_id_for(path: Path) -> str:
-    """doc_id = 父目录名-文件名（可读；同目录同名文件稳定映射到同一 doc_id，重灌即更新）。"""
+    """doc_id = 父目录名-文件名（可读；同目录同名文件稳定映射到同一 doc_id，重灌即更新）。
+
+    FIX P1-10：截断到 ≤64 且保证唯一（SAFE_DOC_ID 上限 64；超长用 sha1 后缀防冲突）。
+    """
     parent = "".join(c if c.isalnum() else "-" for c in path.parent.name).strip("-") or "dir"
     stem = "".join(c if c.isalnum() else "-" for c in path.stem).strip("-") or "doc"
-    return f"{parent}-{stem}"[:128]
+    base = f"{parent}-{stem}"
+    if len(base) <= 64:
+        return base
+    suffix = hashlib.sha1(base.encode("utf-8")).hexdigest()[:11]
+    return f"{base[:52]}-{suffix}"  # 52 + 1 + 11 = 64
 
 
 async def _copy_to_upload(src: Path) -> Path:
@@ -86,16 +94,16 @@ async def scan_once(config_path: Path | None = None) -> dict:
         logger.info("无 connector 目录配置（%s），跳过本轮", settings.connector_config)
         return stats
 
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240 单任务常驻进程，同步文件 IO 可接受
     async with session_factory() as session:
         for item in dirs:
             root = Path(item["path"])
-            if not root.is_dir():
+            if not root.is_dir():  # noqa: ASYNC240 同左
                 stats["errors"].append(f"目录不存在：{root}")
                 continue
             department = item.get("department", "")
-            for file in sorted(root.rglob("*")):
-                if not file.is_file() or file.name.startswith(IGNORED_PREFIXES):
+            for file in sorted(root.rglob("*")):  # noqa: ASYNC240 同左
+                if not file.is_file() or file.name.startswith(IGNORED_PREFIXES):  # noqa: ASYNC240 同左
                     continue
                 if file.suffix.lower() not in SUPPORTED_EXTENSIONS:
                     continue  # 图片/临时文件等不支持类型静默跳过
@@ -150,15 +158,31 @@ async def scan_once(config_path: Path | None = None) -> dict:
     return stats
 
 
+_stop_requested = False
+
+
+def _handle_signal(signum, frame) -> None:  # noqa: ANN001
+    global _stop_requested
+    _stop_requested = True
+    logger.info("收到信号 %s，扫描完成后退出…", signum)
+
+
 async def _run_loop(interval: int) -> None:
     logger.info("connector 常驻扫描启动，间隔 %ds", interval)
-    while True:
+    for sig in (signal.SIGINT, getattr(signal, "SIGBREAK", None), getattr(signal, "SIGTERM", None)):
+        if sig is not None:
+            try:
+                signal.signal(sig, _handle_signal)
+            except (ValueError, OSError):
+                pass
+    while not _stop_requested:
         try:
             stats = await scan_once()
             logger.info("扫描完成：%s", stats)
         except Exception:  # noqa: BLE001
             logger.exception("扫描异常，下轮重试")
         await asyncio.sleep(interval)
+    logger.info("connector 已退出")
 
 
 def main() -> int:

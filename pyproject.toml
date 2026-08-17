@@ -9,8 +9,9 @@ dependencies = [
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "langchain-community<0.4",
+    "langchain-openai>=1.5.1",
     "langfuse>=4.14.4",
-    "minio>=7.2.20",
+    "langgraph>=1.2.11",
     "paddleocr>=3.7.0",
     "paddlepaddle>=3.3.1",
     "prometheus-client>=0.26.0",
@@ -22,7 +23,6 @@ dependencies = [
     "ragas>=0.4.3",
     "redis>=8.1.0",
     "sqlalchemy[asyncio]>=2.0.52",
-    "structlog>=26.1.0",
     "uvicorn[standard]>=0.52",
     "websockets==15.0.1",
 ]
@@ -43,6 +43,10 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
 # B008：FastAPI 依赖注入标准模式（Depends() 作参数默认值）
 ignore = ["B008"]
+
+# 测试代码行长不作严格要求（断言/构造语句常见超长）
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

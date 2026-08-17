@@ -12,9 +12,9 @@ import json
 
 import pytest
 
-from app.eval import golden_set, feedback_collect
+from app.eval import golden_set
 from app.eval.feedback_collect import append_feedback_cases, collect_feedback_cases
-from app.eval.golden_set import FEEDBACK_CASES_PATH, GoldenCase
+from app.eval.golden_set import GoldenCase
 
 
 async def _seed_feedback() -> None:

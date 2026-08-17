@@ -46,6 +46,23 @@ def _validate_doc_id(doc_id: str) -> str:
     return doc_id
 
 
+# 魔数交叉校验（FIX P1-11）：二进制格式按文件头字节核实，防改名伪装。
+# 文本类（md/txt/html）无固定魔数，跳过校验。
+_MAGIC_CHECK = {
+    ".pdf": (b"%PDF",),
+    ".docx": (b"PK",),  # OOXML 为 zip 容器
+    ".pptx": (b"PK",),
+}
+
+
+def _check_magic_bytes(ext: str, content: bytes) -> bool:
+    """扩展名与文件头魔数是否匹配；无规则（文本类）视为通过。"""
+    expected = _MAGIC_CHECK.get(ext)
+    if expected is None:
+        return True
+    return content[:4].startswith(expected[0])
+
+
 def _slugify(name: str) -> str:
     stem = Path(name).stem
     safe = "".join(c for c in stem if c.isalnum() or c in "-_") or "doc"
@@ -102,6 +119,10 @@ async def upload(
     content = await file.read()
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "文件超过 50MB 限制")
+    if not _check_magic_bytes(ext, content):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, f"文件内容与扩展名 {ext} 不匹配"
+        )
 
     final_doc_id = _slugify(file.filename or "doc")
     if doc_id is not None:
@@ -113,7 +134,8 @@ async def upload(
     await asyncio.to_thread(_ensure_upload_dir)
     stored_name = f"{uuid.uuid4().hex}{ext}"
     stored_path = UPLOAD_DIR / stored_name
-    stored_path.write_bytes(content)
+    # 同步写盘移入线程池，避免阻塞事件循环（FIX P1-7）
+    await asyncio.to_thread(stored_path.write_bytes, content)
 
     doc = await session.scalar(select(Document).where(Document.doc_id == final_doc_id))
     if doc is None:
@@ -142,10 +164,21 @@ async def upload(
         doc.error = ""
         await session.commit()
 
-    # 摄入任务入队（Redis Stream，独立 worker 消费）
-    await enqueue(
-        final_doc_id, stored_path, department, file.filename or "", user.username
-    )
+    # 摄入任务入队（Redis Stream，独立 worker 消费）。
+    # 入队失败：清理已写文件 + DB 行置 failed，不留孤儿（FIX P1-7）
+    try:
+        await enqueue(
+            final_doc_id, stored_path, department, file.filename or "", user.username
+        )
+    except Exception:
+        await asyncio.to_thread(stored_path.unlink, missing_ok=True)
+        doc.status = "failed"
+        doc.error = "入队失败（Redis 不可用）"
+        await session.commit()
+        logger.exception("上传入队失败：%s", final_doc_id)
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "摄入队列不可用，请稍后重试"
+        ) from None
     await log_audit(session, user.username, "upload", final_doc_id, file.filename or "", request)
     logger.info("上传任务入队：%s（task=%s）", final_doc_id, doc.id)
     return UploadResponse(task_id=doc.id, doc_id=final_doc_id, status="uploading")

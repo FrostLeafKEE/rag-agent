@@ -114,7 +114,11 @@ async def _complete_json(llm, prompt: str) -> dict | None:
         )
         return json.loads(_extract_json(raw))
     except Exception:
-        logger.warning("LLM JSON 解析失败：%s", prompt[:40])
+        # 日志中 prompt 片段过脱敏（FIX P2-19）：prompt 含用户问题原文，可能带 PII
+        from app.security.redaction import get_engine
+
+        snippet = get_engine().redact(prompt[:80])[0]
+        logger.warning("LLM JSON 解析失败：%s", snippet)
         return None
 
 
@@ -125,6 +129,8 @@ async def _complete_text(llm, prompt: str) -> str:
         )
         return raw.strip().strip('"').strip("「」")
     except Exception:
+        # 不改变降级行为（返回空串），但故障要可观测（FIX P1-6）
+        logger.warning("LLM 文本调用失败，降级返回空", exc_info=True)
         return ""
 
 
