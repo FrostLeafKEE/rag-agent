@@ -256,3 +256,11 @@ P0 验收（自动化 + 人工）：
 对全仓做了一轮安全审计（含利用路径验证），16 项发现全部修复并有回归测试（tests/test_security_regression.py）：
 - 阻断性 4 项：空部门用户全库可见（build_filter([]) 改为永假表达式 + 注册必填部门）、Milvus filter 字符串拼接注入（doc_id 白名单 SAFE_DOC_ID + indexer 双端校验）、doc_id 冲突文档接管（归属校验 409）、删除竞态（worker 丢弃 disabled 文档任务）
 - 加固 12 项：生产环境强制 ≥32 位 JWT 密钥与 debug=False、登录失败 5 次锁 5 分钟（Redis 计数）、密码 bcrypt 72 字节上限、删除/越权审计落库、上传 Content-Length 前置限长、重传先删后写（旧 chunk 残留）、SSE 移除无用 DB 依赖（连接池占用）、列表 limit 钳制、history 条数与长度限制、上传副本摄入成功后清理、JWT payload 解析健壮性、admin 审计查询 limit 边界
+
+### 工程化与治理改进（2026-08-17，详见 [ROADMAP.md](./ROADMAP.md)）
+
+- **缺陷级审查**（FIX_LIST 22 项，已全部修复并勾选）：部门 filter 注入、SQL 表名单绕过、worker PEL 恢复 + 失败落库、优雅退出、依赖声明、doc_id 截断、魔数校验等；
+- **ROADMAP 第一批**（R1-R6）：注册开关 `AUTH_DISABLE_SIGNUP`（prod 强制）、安全响应头、依赖漏洞扫描（SECURITY_NOTES 跟踪）、Alembic 迁移（替代 create_all）、mypy 接入、ruff format；
+- **ROADMAP 第二批**（R7-R11）：审计查询增强（过滤/分页/CSV 导出）、CI 流水线（四门禁 + 手动评估 job）、pre-commit、运维 Runbook（9 故障模式）、CHANGELOG + 语义化版本（0.2.0）；
+- **复审闭环**（REAUDIT）：CI 分支修正、format 补跑、CONTRIBUTING 评审检查单、外部依赖降级矩阵（TECH_STACK §8.1）。
+- 版本 0.2.0；质量门禁：ruff 0 / mypy 0 / pytest 173 全绿。

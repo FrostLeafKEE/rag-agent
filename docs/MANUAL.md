@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 |---|---|
-| 版本 | v0.2（2026-08-17） |
+| 版本 | v0.2.0（2026-08-17） |
 | 定位 | 企业内部 RAG Agent 知识问答平台（非 AI 客服） |
 | 文档 | [PRD.md](./PRD.md)（需求）、[TECH_STACK.md](./TECH_STACK.md)（技术栈）、[P2_PLAN.md](./P2_PLAN.md)（阶段计划）、[RBAC_PLAN.md](./RBAC_PLAN.md)（权限模型） |
 
@@ -101,8 +101,9 @@ uv sync
 ### 2.5 首次初始化
 
 ```bash
-# 建表（API 启动时自动执行 init_db；也可手动）
+# 建表（API 启动时自动执行 init_db；已由 Alembic 管理的库走迁移）
 uv run python -c "import asyncio; from app.db import init_db; asyncio.run(init_db())"
+# 或显式执行迁移：uv run alembic upgrade head
 
 # 创建超级管理员（首次使用）
 uv run python -m app.cli.create_admin --username admin --password '强密码'
@@ -110,6 +111,10 @@ uv run python -m app.cli.create_admin --username admin --password '强密码'
 # 验证
 curl http://localhost:8000/healthz        # {"status":"ok",...}
 ```
+
+> **注册开关**：默认开放注册（`AUTH_DISABLE_SIGNUP=false`，开发方便）。
+> 生产环境必须设置 `AUTH_DISABLE_SIGNUP=true`（启动强校验，否则拒绝启动）——
+> 关闭后注册接口返回 403，账号统一由超级管理员在管理台"用户管理"页创建。
 
 ### 2.6 前端
 
@@ -126,6 +131,8 @@ cd web-ui && npm install && npm run build
 
 - `APP_ENV=prod` 且 `DEBUG=false`（启动强校验，否则拒绝启动）；
 - `JWT_SECRET` 必须 ≥32 位随机值（prod 强校验）；
+- `AUTH_DISABLE_SIGNUP=true`（prod 强校验：关闭开放注册，账号由管理员创建）；
+- **Schema 变更走 Alembic**：`uv run alembic revision --autogenerate -m "描述"` 生成迁移 → `uv run alembic upgrade head` 应用（初始迁移已覆盖 7 表，存量库已 stamp）；
 - 建议 HTTPS 反向代理、定期备份 PostgreSQL 卷与 Milvus 数据；
 - API keys 均存 `.env`（不入库），轮换后重启服务生效。
 
@@ -144,7 +151,7 @@ cd web-ui && npm install && npm run build
 
 ### 3.2 普通用户（user）
 
-1. **登录**：由管理员创建账号（注册接口仅用于开放注册场景；生产建议管理员统一创建）。
+1. **登录**：账号由管理员创建（开放注册关闭后注册接口 403；开发环境可临时开启 `AUTH_DISABLE_SIGNUP=false` 自注册）。
 2. **问答**：在"问答工作台"输入问题，回答流式输出，`[n]` 为引用来源（点击可看文档来源）；支持多轮追问。
 3. **反馈**：回答下方 👍/👎 反馈——点踩样本会被自动沉淀为评估用例（管理员可查）。
 4. **会话**：左侧历史会话可继续/删除；新会话按钮开启新对话。
@@ -165,7 +172,7 @@ cd web-ui && npm install && npm run build
 
 **文档管理**：全部门范围，上传时可指定任意部门。
 
-**审计日志**：`/api/v1/admin/audit` 查询登录/上传/删除/越权/角色变更等敏感事件。
+**审计日志**：管理台"用户管理 → 审计日志"页签——按操作类型过滤、分页查看、一键导出 CSV（登录/上传/删除/越权/角色变更/脱敏等事件）；API 为 `GET /api/v1/admin/audit`（过滤/分页）与 `GET /api/v1/admin/audit/export`（CSV）。
 
 ### 3.5 知识库维护（配置文件）
 
