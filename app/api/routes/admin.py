@@ -237,9 +237,7 @@ async def list_audit(
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"非法 action：{action}")
         query = query.where(AuditLog.action == action)
     total = await session.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = await session.scalars(
-        query.offset(max(0, offset)).limit(max(1, min(limit, 500)))
-    )
+    rows = await session.scalars(query.offset(max(0, offset)).limit(max(1, min(limit, 500))))
     return {
         "items": [a.to_dict() for a in rows],
         "total": total,
@@ -255,16 +253,19 @@ async def export_audit(
 ) -> Response:
     """审计日志 CSV 导出（R7：合规审计用，最多 5000 条）。"""
     _require_super_admin(admin)
-    rows = await session.scalars(
-        select(AuditLog).order_by(AuditLog.id.desc()).limit(5000)
-    )
+    rows = await session.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(5000))
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(["id", "user", "action", "resource", "detail", "ip", "created_at"])
     for a in rows:
         writer.writerow(
             [
-                a.id, a.user, a.action, a.resource, a.detail, a.ip,
+                a.id,
+                a.user,
+                a.action,
+                a.resource,
+                a.detail,
+                a.ip,
                 a.created_at.isoformat() if a.created_at else "",
             ]
         )

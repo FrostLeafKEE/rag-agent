@@ -244,6 +244,19 @@ uv run python -m app.eval.run_eval
 | ADR-05 | 权限 filter 下推 | 安全要求，检索层强制执行 | PRD FR-33 |
 | ADR-06 | Python 3.12 而非 3.14 | 生态兼容（milvus/langchain/docling 依赖树） | uv 管理 |
 
+## 8.1 外部依赖降级矩阵（REAUDIT D-2 反向梳理）
+
+| 依赖 | 故障表现 | 当前行为 | 恢复条件 |
+|---|---|---|---|
+| LLM（deepseek-v4-flash） | 超时 120s / 5xx / 返回非 JSON | JSON 解析失败兜底默认值（intent=qa 等）；流式异常经 SSE error 事件返回；`_complete_text` 失败返回空串（已记日志） | 上游恢复后重试；无自动重试（幂等场景可手工重试） |
+| 嵌入（BGE-M3） | 5xx / 超时 | 摄入失败（异常冒泡 → worker 重投 ≤3 次 → documents=failed） | 上游恢复后重投/重传 |
+| 重排（bge-reranker） | 失败/未配置 key | **自动降级 RRF 原始排序**（不阻断检索） | 无需处理 |
+| OCR（PaddleOCR） | 依赖缺失/加载失败 | 懒加载失败仅影响扫描件；文本层 PDF 不受影响 | 安装依赖后重启 |
+| Docling 解析 | 失败 | 降级 PyMuPDF（文本抽取） | 无需处理 |
+| Milvus | 不可达 | 摄入/检索异常上抛（无显式超时，靠客户端默认） | 容器恢复后重试 |
+| Redis | 不可达 | 登录限速/计数降级放行（记日志）；队列读写异常重试；上传入队失败 → 503 + 文件清理 | 容器恢复后自动 |
+| Langfuse | 不可达/未配置 key | 降级 noop（零外部调用），不影响回答链路 | 无需处理 |
+
 ## 9. 成本估算（月度，仅供参考）
 
 | 项目 | 云端 API 方案 | 本地部署方案 |

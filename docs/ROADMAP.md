@@ -58,3 +58,25 @@
 2. **第二批（R7~R11）**：试用开始后按反馈插入（R10 Runbook 建议最先，成本最低收益直接）；
 3. **第三批（R12~R14）**：试用期真实数据量出现后启动；
 4. 每批结束跑一次回归门禁（`uv run python -m app.eval.regression`），保证评估基线不劣化。
+
+---
+
+## 复审后续（REAUDIT_FOLLOWUP 处理记录，2026-08-17）
+
+**准阻塞（已修复）**：
+- R6-1 ✅ CI 分支改 `[main, master]`（仓库默认分支为 master，此前 CI 永不触发）
+- R6-2 ✅ `ruff format` 补跑（R7 改动后遗漏的 2 个文件），`format --check` 0 待格式化
+
+**建议项**：
+- R3-1 ✅ `docs/SECURITY_NOTES.md` 记录 CVE-2026-6587/CVE-2025-69872 详情 + 每月复核节奏
+- R6-3 ⏸ 真实 CI 运行**需要 GitHub remote**（用户提供后 push 验证）；evaluation job 需真实模型 key
+- H1-1 ✅ 决策：**不做 deptry**（17 项 DEP002 多为框架动态使用/CLI 入口误报，治理收益低）；langgraph/langchain-openai 已声明（FIX_LIST P1-9）
+
+**待决策项**：
+- D-1 ✅ 做：`docs/CONTRIBUTING.md`（PR 五项检查单 + 模块依赖方向 + 质量门禁）
+- D-2 ✅ 做：TECH_STACK §8.1 外部依赖降级矩阵（8 项反向梳理）
+- D-3 ⏸ 评估结果时间序列归档：进第三批（试用期后，配合 G1）
+- D-4 ⏸ 季度升级窗口：进第三批；websockets==15.0.1 / langchain-community<0.4 保留理由已记录于 TECH_STACK/记忆
+- D-5 ⏸ 安全评审周期：季度审计节奏入 CONTRIBUTING（已含"安全影响"检查项）；威胁模型待试用期后补充
+
+**状态**：REAUDIT 验收标准 1（本地四门禁）✅；标准 2/5 需 remote+真实 key；标准 3 ✅（SECURITY_NOTES）；标准 4 ✅（本记录）。
