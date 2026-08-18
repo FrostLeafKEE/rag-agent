@@ -1,7 +1,16 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
+
+// 当前用户（安全解析：localStorage 中可能为 'null' 字符串，直接 parse 会抛错拖垮渲染）
+const currentUser = computed(() => {
+  try {
+    return JSON.parse(localStorage.getItem('rag_user') || 'null')
+  } catch {
+    return null
+  }
+})
 
 const sessions = ref([])
 const currentSessionId = ref(null)
@@ -158,7 +167,7 @@ onMounted(refreshSessions)
             </div>
           </div>
           <div v-if="m.role === 'user'" class="role-avatar user">
-            {{ (JSON.parse(localStorage.getItem('rag_user') || '{}').username || '我')[0].toUpperCase() }}
+            {{ (currentUser?.username || '我')[0].toUpperCase() }}
           </div>
         </div>
       </div>
