@@ -34,6 +34,14 @@
 
 ---
 
+## 1.1 界面预览
+
+| 登录页 | 问答工作台（流式回答 + 引用标注） | 文档管理（按角色可见） |
+|---|---|---|
+| ![login](screenshots/login.png) | ![chat](screenshots/chat.png) | ![docs](screenshots/docs.png) |
+
+---
+
 ## 2. 核心特性
 
 ### 2.1 文档摄入
