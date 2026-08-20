@@ -257,6 +257,8 @@ uv run python -m app.eval.run_eval
 | Redis | 不可达 | 登录限速/计数降级放行（记日志）；队列读写异常重试；上传入队失败 → 503 + 文件清理 | 容器恢复后自动 |
 | Langfuse | 不可达/未配置 key | 降级 noop（零外部调用），不影响回答链路 | 无需处理 |
 
+**LLM 清洗结构化输出路径（v0.3.0 实测）**：摄入管道的 LLM 清洗节点按优先级探测——① OpenAI `response_format=json_schema`（Pydantic CleaningResult 即 schema，**已验证当前 LLM 网关支持**，乱码块真实清洗通过，confidence 0.9）；② LangChain `with_structured_output(CleaningResult)`；③ prompt 约束兜底（代码标注 `# FALLBACK`）。FMA 语义写入 Field description，结构化输出在 schema 层强制；`validate_llm_cleaning` 兜底（长度 <50% 或置信度 <0.7 回退原文）。
+
 ## 9. 成本估算（月度，仅供参考）
 
 | 项目 | 云端 API 方案 | 本地部署方案 |

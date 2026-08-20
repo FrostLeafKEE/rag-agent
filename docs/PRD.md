@@ -264,3 +264,11 @@ P0 验收（自动化 + 人工）：
 - **ROADMAP 第二批**（R7-R11）：审计查询增强（过滤/分页/CSV 导出）、CI 流水线（四门禁 + 手动评估 job）、pre-commit、运维 Runbook（9 故障模式）、CHANGELOG + 语义化版本（0.2.0）；
 - **复审闭环**（REAUDIT）：CI 分支修正、format 补跑、CONTRIBUTING 评审检查单、外部依赖降级矩阵（TECH_STACK §8.1）。
 - 版本 0.2.0；质量门禁：ruff 0 / mypy 0 / pytest 173 全绿。
+
+### 数据清洗与质量门禁（2026-08-18，v0.3.0，详见 CHANGELOG）
+
+- **规则清洗**（app/ingestion/cleaning.py）：噪声块过滤（过短 <10 字符 / 纯符号编号 / 页眉页脚 / 目录条目，行级判定不误杀正常段落），丢弃原因计数入日志与报告；
+- **内容级去重**：清洗后全文 sha1 存 documents.content_hash（B-Tree 索引），跨文档比对（解决"A.docx 与 A.pdf 同内容"重复入库）；doc_id 级幂等保持不变；
+- **LLM 清洗（可选）**：`ENABLE_LLM_CLEANING` 默认关闭，仅乱码/OCR 特征块触发；输出经模型原生 Structured Output 强约束（OpenAI response_format json_schema → LangChain with_structured_output → prompt 兜底），CleaningResult Pydantic schema 承载 FMA 语义；实测 moyuu 网关支持首选路径，乱码块真实清洗通过；
+- **摄入质量报告**：`ingestion_reports` 表（总块数/过滤数/去重数/平均长度/空页数/原因分布/LLM 统计），管理台文档页「质量」入口弹窗查看，API `GET /api/v1/ingestion/report/{doc_id}`；
+- Alembic 迁移 ed25bd7e38（content_hash + ingestion_reports，存量/空库双演练通过）；版本 0.3.0，测试 192 全绿。
