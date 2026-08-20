@@ -188,7 +188,7 @@ uv run python -m app.cli.create_admin --username admin --password '强密码' --
 │   │   ├── security.py   # 密码哈希 / JWT 编解码
 │   │   └── audit.py      # 审计日志
 │   ├── eval/             # 黄金集 / 检索评估 / RAGAS 生成评估 / 回归门禁 / 反馈回流
-│   ├── ingestion/        # parser(OCR) / chunker / embedder / indexer / pipeline / queue / worker / connector
+│   ├── ingestion/        # parser(OCR) / chunker / **cleaning(清洗+质量门禁)** / embedder / indexer / pipeline / queue / worker / connector
 │   ├── llm/              # 模型网关（OpenAI 兼容）/ 提示词
 │   ├── observability/    # Langfuse trace / Prometheus 指标
 │   ├── retrieval/        # 混合检索 / RRF / 重排 / 术语表 / 权限 filter

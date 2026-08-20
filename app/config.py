@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     term_expand_enabled: bool = True  # 检索前把别名变体并入查询集合
     term_config: str = "config/terms.json"  # {别名: 标准词}
 
+    # ---- 数据清洗与质量门禁（P2 增强）----
+    enable_llm_cleaning: bool = False  # LLM 清洗开关（默认关闭，规则清洗始终生效）
+    llm_cleaning_min_len: int = 20  # 触发 LLM 清洗的最小块长（保护成本）
+
     @model_validator(mode="after")
     def _prod_requires_strong_secret(self) -> "Settings":
         """生产环境必须显式配置 ≥32 位随机 jwt_secret（默认值可伪造任意用户 token）。"""

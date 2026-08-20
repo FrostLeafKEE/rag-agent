@@ -11,7 +11,15 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import admin, auth, documents, health, qa, sessions
+from app.api.routes import (
+    admin,
+    auth,
+    documents,
+    health,
+    ingestion_report,
+    qa,
+    sessions,
+)
 from app.config import get_settings
 from app.db import init_db
 from app.observability.metrics import metrics_middleware, metrics_response
@@ -27,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="RAG Enterprise API",
-    version="0.2.0",
+    version="0.3.0",
     debug=settings.debug,
     docs_url="/docs" if settings.debug else None,
     lifespan=lifespan,
@@ -52,6 +60,7 @@ app.include_router(admin.router)
 app.include_router(documents.router)
 app.include_router(sessions.router)
 app.include_router(qa.router, tags=["qa"])
+app.include_router(ingestion_report.router)
 
 
 @app.get("/metrics", include_in_schema=False)

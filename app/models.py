@@ -8,6 +8,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -56,6 +57,30 @@ class AdminDepartment(Base):
     department: Mapped[str] = mapped_column(String(64))
 
 
+class IngestionReport(Base):
+    """摄入质量报告（数据清洗与质量门禁）：每篇文档最近一次摄入的统计。
+
+    doc_id 唯一（重摄入覆盖更新，与 documents 语义一致）；
+    noise_reasons 为 JSON 字符串 {"reason": 次数}，记录每种丢弃原因。
+    """
+
+    __tablename__ = "ingestion_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    doc_id: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    total_blocks: Mapped[int] = mapped_column(Integer, default=0)  # 清洗前 chunk 总数
+    filtered_blocks: Mapped[int] = mapped_column(Integer, default=0)  # 规则清洗丢弃数
+    dedup_skipped: Mapped[int] = mapped_column(Integer, default=0)  # 内容去重跳过数
+    avg_chunk_length: Mapped[float] = mapped_column(Float, default=0.0)  # 保留块平均长度
+    empty_pages: Mapped[int] = mapped_column(Integer, default=0)  # 全块被过滤的页数
+    noise_reasons: Mapped[str] = mapped_column(Text, default="{}")  # JSON 原因计数
+    llm_cleaned: Mapped[int] = mapped_column(Integer, default=0)  # LLM 清洗成功数
+    llm_fallback: Mapped[int] = mapped_column(Integer, default=0)  # LLM 清洗回退数
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
 class Document(Base):
     """文档元数据（PRD FR-03）：摄入状态与权限标签，关联 Milvus 中的 chunks。"""
 
@@ -72,6 +97,8 @@ class Document(Base):
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str] = mapped_column(String(512), default="")
     uploaded_by: Mapped[str] = mapped_column(String(64), default="")
+    # 清洗后全文 sha1（内容级去重：解决"A.docx 与 A.pdf 同内容"；B-Tree 索引加速查重）
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

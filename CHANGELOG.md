@@ -10,6 +10,16 @@
 
 ---
 
+## [0.3.0] - 2026-08-18
+
+### 新增（feat）
+- **数据清洗与质量门禁**（app/ingestion/cleaning.py）：
+  - 规则清洗：噪声块过滤（过短/纯符号/页眉页脚/目录条目，按原因计数入日志）
+  - 内容级去重：清洗后全文 sha1 比对已入库文档（解决"A.docx 与 A.pdf 同内容"），documents.content_hash 带 B-Tree 索引
+  - LLM 清洗（可选，默认关闭）：模型原生 Structured Output 强约束（OpenAI response_format json_schema → LangChain with_structured_output → prompt 兜底），CleaningResult Pydantic schema 承载 FMA 语义
+  - 摄入质量报告：总块数/过滤数/去重数/平均长度/空页数/原因分布 落 IngestionReport 表，GET /api/v1/ingestion/report/{doc_id} 查询
+- Alembic 迁移：documents.content_hash + ingestion_reports（存量/空库双演练通过）
+
 ## [0.2.0] - 2026-08-17
 
 ### 新增（feat）
