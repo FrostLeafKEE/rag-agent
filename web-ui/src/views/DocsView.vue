@@ -74,6 +74,31 @@ async function removeDoc(doc) {
   }
 }
 
+// 摄入质量报告（数据清洗与质量门禁）
+const reportVisible = ref(false)
+const report = ref(null)
+const reportLoading = ref(false)
+
+async function viewReport(doc) {
+  reportLoading.value = true
+  reportVisible.value = true
+  report.value = null
+  try {
+    report.value = await api.getIngestionReport(doc.doc_id)
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    reportLoading.value = false
+  }
+}
+
+const REASON_LABELS = {
+  too_short: '过短（<10 字符）',
+  no_language: '纯符号/编号',
+  header_footer: '页眉页脚',
+  toc: '目录条目',
+}
+
 function statusTag(status) {
   const map = {
     uploading: { text: '上传中', type: 'info' },
@@ -143,13 +168,38 @@ onMounted(() => {
         </el-table-column>
         <el-table-column prop="chunk_count" label="分块" width="70" align="center" />
         <el-table-column prop="uploaded_by" label="上传人" width="100" />
-        <el-table-column label="操作" width="80" align="center">
+        <el-table-column label="操作" width="140" align="center">
           <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="viewReport(row)">质量</el-button>
             <el-button link type="danger" size="small" @click="removeDoc(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-dialog v-model="reportVisible" title="摄入质量报告" width="520px">
+      <div v-loading="reportLoading">
+        <template v-if="report">
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="文档 ID">{{ report.doc_id }}</el-descriptions-item>
+            <el-descriptions-item label="清洗前块数">{{ report.total_blocks }}</el-descriptions-item>
+            <el-descriptions-item label="规则过滤">{{ report.filtered_blocks }}</el-descriptions-item>
+            <el-descriptions-item label="内容去重">{{ report.dedup_skipped }}</el-descriptions-item>
+            <el-descriptions-item label="平均块长">{{ report.avg_chunk_length }}</el-descriptions-item>
+            <el-descriptions-item label="空页数">{{ report.empty_pages }}</el-descriptions-item>
+            <el-descriptions-item label="LLM 清洗">{{ report.llm_cleaned }}</el-descriptions-item>
+            <el-descriptions-item label="LLM 回退">{{ report.llm_fallback }}</el-descriptions-item>
+          </el-descriptions>
+          <div v-if="Object.keys(report.noise_reasons || {}).length" class="report-reasons">
+            <span class="report-title">丢弃原因分布：</span>
+            <el-tag v-for="(count, reason) in report.noise_reasons" :key="reason" size="small" class="reason-tag">
+              {{ REASON_LABELS[reason] || reason }} × {{ count }}
+            </el-tag>
+          </div>
+        </template>
+        <el-empty v-else-if="!reportLoading" description="该文档暂无质量报告" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -199,4 +249,8 @@ onMounted(() => {
   font-weight: 600;
 }
 .docs-table :deep(.el-table__row:hover > td) { background: #faf8ff !important; }
+
+.report-reasons { margin-top: 14px; }
+.report-title { font-size: 13px; color: #555170; margin-right: 8px; }
+.reason-tag { margin: 2px 4px; }
 </style>

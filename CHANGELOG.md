@@ -19,6 +19,8 @@
   - LLM 清洗（可选，默认关闭）：模型原生 Structured Output 强约束（OpenAI response_format json_schema → LangChain with_structured_output → prompt 兜底），CleaningResult Pydantic schema 承载 FMA 语义
   - 摄入质量报告：总块数/过滤数/去重数/平均长度/空页数/原因分布 落 IngestionReport 表，GET /api/v1/ingestion/report/{doc_id} 查询
 - Alembic 迁移：documents.content_hash + ingestion_reports（存量/空库双演练通过）
+- 前端：文档管理页新增「质量」入口，弹窗展示摄入质量报告（字段 + 丢弃原因分布，API 层已就绪）
+- LLM 清洗实测：moyuu 网关支持 OpenAI response_format json_schema，乱码块真实清洗通过（clean 修复 + changes 说明 + confidence 0.9，首选结构化输出路径可用）
 
 ## [0.2.0] - 2026-08-17
 
