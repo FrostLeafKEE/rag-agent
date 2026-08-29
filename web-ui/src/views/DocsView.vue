@@ -8,10 +8,12 @@ const loading = ref(false)
 const uploading = ref(false)
 const department = ref('')
 const myDepts = ref(null) // null=不限（super_admin）；数组=负责部门（admin）
-const keyword = ref('') // 文档搜索：按标题 / 文档 ID 模糊匹配（防抖自动搜索）
+const keyword = ref('') // 文档搜索：按所选字段模糊匹配（防抖自动搜索）
+const searchField = ref('all') // all | doc_id | title | department | uploader
+const statusFilter = ref('') // ''=全部；uploading/indexed/failed/disabled
 
 let searchTimer = null
-watch(keyword, () => {
+watch([keyword, searchField, statusFilter], () => {
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(refresh, 300)
 })
@@ -19,7 +21,13 @@ watch(keyword, () => {
 async function refresh() {
   loading.value = true
   try {
-    docs.value = (await api.listDocuments({ keyword: keyword.value || undefined })).items
+    docs.value = (
+      await api.listDocuments({
+        keyword: keyword.value || undefined,
+        search_field: searchField.value,
+        status_filter: statusFilter.value || undefined,
+      })
+    ).items
   } catch (e) {
     ElMessage.error(e.message)
   } finally {
@@ -134,11 +142,24 @@ onMounted(() => {
       <div class="upload-bar">
         <el-input
           v-model="keyword"
-          placeholder="🔍 搜索文档（标题 / 文档 ID），回车确认"
+          placeholder="🔍 输入关键词搜索文档"
           clearable
-          style="width: 280px"
+          style="width: 240px"
           class="dept-input search-input"
         />
+        <el-select v-model="searchField" style="width: 120px" class="field-select">
+          <el-option label="全部字段" value="all" />
+          <el-option label="文档 ID" value="doc_id" />
+          <el-option label="标题" value="title" />
+          <el-option label="部门" value="department" />
+          <el-option label="上传人" value="uploader" />
+        </el-select>
+        <el-select v-model="statusFilter" clearable placeholder="全部状态" style="width: 130px" class="status-select">
+          <el-option label="已索引" value="indexed" />
+          <el-option label="上传中" value="uploading" />
+          <el-option label="失败" value="failed" />
+          <el-option label="已停用" value="disabled" />
+        </el-select>
         <el-select
           v-if="myDepts"
           v-model="department"
@@ -225,7 +246,8 @@ onMounted(() => {
 
 .docs-card { border-radius: 14px !important; }
 
-.upload-bar { display: flex; gap: 12px; align-items: center; }
+.upload-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.field-select, .status-select { flex-shrink: 0; }
 .dept-input :deep(.el-input__wrapper) { border-radius: 10px; background: #ffffff; }
 .input-icon { font-size: 13px; margin-right: 2px; opacity: 0.8; }
 .upload-btn {

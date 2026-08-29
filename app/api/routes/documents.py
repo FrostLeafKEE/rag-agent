@@ -218,18 +218,29 @@ async def my_departments(
     return {"departments": None if visible is None else visible}
 
 
+# 搜索字段白名单（防注入：列名不可由用户输入直接拼接）
+_SEARCH_FIELDS = {
+    "doc_id": Document.doc_id,
+    "title": Document.title,
+    "department": Document.department,
+    "uploader": Document.uploaded_by,
+}
+
+
 @router.get("")
 async def list_documents(
     limit: int = 20,
     offset: int = 0,
     status_filter: str | None = None,
     keyword: str | None = None,
+    search_field: str = "all",
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """文档列表（RBAC：仅 super_admin/admin；admin 仅可见负责部门）。
 
-    keyword：按标题 / 文档 ID 模糊匹配（不区分大小写）。
+    keyword + search_field：按指定字段（或任一字段）模糊匹配，不区分大小写。
+    status_filter：按状态精确筛选（uploading/indexed/failed/disabled）。
     """
     _require_doc_admin(user)
     visible = await user_visible_departments(user)
@@ -240,12 +251,22 @@ async def list_documents(
         query = query.where(Document.department.in_(visible or ["__none__"]))
     if status_filter:
         query = query.where(Document.status == status_filter)
-    if keyword:
-        kw = keyword.strip()
-        if kw:
-            pattern = f"%{kw}%"
+    kw = (keyword or "").strip()
+    if kw:
+        pattern = f"%{kw}%"
+        column = _SEARCH_FIELDS.get(search_field)
+        if search_field == "all":
             query = query.where(
-                Document.title.ilike(pattern) | Document.doc_id.ilike(pattern)
+                Document.title.ilike(pattern)
+                | Document.doc_id.ilike(pattern)
+                | Document.department.ilike(pattern)
+                | Document.uploaded_by.ilike(pattern)
+            )
+        elif column is not None:
+            query = query.where(column.ilike(pattern))
+        else:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY, f"非法检索字段：{search_field}"
             )
     docs = list(await session.scalars(query.offset(offset).limit(limit)))
     return {"items": [d.to_dict() for d in docs], "count": len(docs)}
