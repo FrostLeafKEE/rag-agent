@@ -223,10 +223,14 @@ async def list_documents(
     limit: int = 20,
     offset: int = 0,
     status_filter: str | None = None,
+    keyword: str | None = None,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """文档列表（RBAC：仅 super_admin/admin；admin 仅可见负责部门）。"""
+    """文档列表（RBAC：仅 super_admin/admin；admin 仅可见负责部门）。
+
+    keyword：按标题 / 文档 ID 模糊匹配（不区分大小写）。
+    """
     _require_doc_admin(user)
     visible = await user_visible_departments(user)
     limit = max(1, min(limit, 100))
@@ -236,6 +240,13 @@ async def list_documents(
         query = query.where(Document.department.in_(visible or ["__none__"]))
     if status_filter:
         query = query.where(Document.status == status_filter)
+    if keyword:
+        kw = keyword.strip()
+        if kw:
+            pattern = f"%{kw}%"
+            query = query.where(
+                Document.title.ilike(pattern) | Document.doc_id.ilike(pattern)
+            )
     docs = list(await session.scalars(query.offset(offset).limit(limit)))
     return {"items": [d.to_dict() for d in docs], "count": len(docs)}
 

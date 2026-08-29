@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 
@@ -8,11 +8,18 @@ const loading = ref(false)
 const uploading = ref(false)
 const department = ref('')
 const myDepts = ref(null) // null=不限（super_admin）；数组=负责部门（admin）
+const keyword = ref('') // 文档搜索：按标题 / 文档 ID 模糊匹配（防抖自动搜索）
+
+let searchTimer = null
+watch(keyword, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(refresh, 300)
+})
 
 async function refresh() {
   loading.value = true
   try {
-    docs.value = (await api.listDocuments()).items
+    docs.value = (await api.listDocuments({ keyword: keyword.value || undefined })).items
   } catch (e) {
     ElMessage.error(e.message)
   } finally {
@@ -125,6 +132,13 @@ onMounted(() => {
     </div>
     <el-card shadow="never" class="prts-card docs-card">
       <div class="upload-bar">
+        <el-input
+          v-model="keyword"
+          placeholder="🔍 搜索文档（标题 / 文档 ID），回车确认"
+          clearable
+          style="width: 280px"
+          class="dept-input search-input"
+        />
         <el-select
           v-if="myDepts"
           v-model="department"

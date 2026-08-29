@@ -90,7 +90,12 @@ export const api = {
     }).then(handle),
 
   // 文档
-  listDocuments: () => fetch(API + '/api/v1/documents', { headers: authHeaders() }).then(handle),
+  listDocuments: (params = {}) => {
+    const q = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== '' && v !== null)
+    ).toString()
+    return fetch(API + `/api/v1/documents?${q}`, { headers: authHeaders() }).then(handle)
+  },
   myDepartments: () => fetch(API + '/api/v1/documents/departments', { headers: authHeaders() }).then(handle),
   uploadDocument: async (file, department) => {
     const form = new FormData()
