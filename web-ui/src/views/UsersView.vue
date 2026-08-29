@@ -23,7 +23,9 @@ const ROLE_LABELS = {
 }
 
 function effectiveDepartments(row) {
-  // admin 取负责部门集合；其余取归属部门
+  // super_admin：全局角色，不归属任何部门（部门列显示"全部"，不参与部门筛选）
+  if (row.role === 'super_admin') return []
+  // admin 取负责部门集合；普通用户取归属部门
   if (row.role === 'admin') return row.admin_departments || []
   return row.department ? [row.department] : []
 }
