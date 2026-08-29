@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 
@@ -9,6 +9,60 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const editing = ref(null) // null=新建；对象=编辑
 const form = ref({ username: '', password: '', department: '', role: 'user', admin_departments: [] })
+
+// 用户筛选（前端即时过滤：用户名搜索 + 角色/部门/状态一键筛选）
+const searchUsername = ref('')
+const filterRole = ref('')
+const filterDepartment = ref('')
+const filterActive = ref('')
+
+const ROLE_LABELS = {
+  super_admin: '超级管理员',
+  admin: '部门管理员',
+  user: '普通用户',
+}
+
+function effectiveDepartments(row) {
+  // admin 取负责部门集合；其余取归属部门
+  if (row.role === 'admin') return row.admin_departments || []
+  return row.department ? [row.department] : []
+}
+
+const filteredUsers = computed(() =>
+  users.value.filter((u) => {
+    if (searchUsername.value && !u.username.toLowerCase().includes(searchUsername.value.toLowerCase())) {
+      return false
+    }
+    if (filterRole.value && u.role !== filterRole.value) {
+      return false
+    }
+    if (filterDepartment.value) {
+      const depts = u.role === 'admin' ? u.admin_departments || [] : [u.department]
+      if (!depts.includes(filterDepartment.value)) {
+        return false
+      }
+    }
+    if (filterActive.value !== '' && String(u.is_active) !== filterActive.value) {
+      return false
+    }
+    return true
+  })
+)
+
+const departmentOptions = computed(() => {
+  const set = new Set()
+  for (const u of users.value) {
+    for (const d of effectiveDepartments(u)) set.add(d)
+  }
+  return [...set].sort()
+})
+
+function clearFilters() {
+  searchUsername.value = ''
+  filterRole.value = ''
+  filterDepartment.value = ''
+  filterActive.value = ''
+}
 
 // 审计日志（R7）
 const auditRows = ref([])
@@ -21,12 +75,6 @@ const ACTION_LABELS = {
   register: '注册', login: '登录', login_failed: '登录失败',
   upload: '上传', delete: '删除', denied: '越权拒绝',
   user_admin: '用户管理', redact: '脱敏',
-}
-
-const ROLE_LABELS = {
-  super_admin: '超级管理员',
-  admin: '部门管理员',
-  user: '普通用户',
 }
 
 async function refresh() {
@@ -164,7 +212,37 @@ onMounted(refresh)
     <el-tabs v-model="activeTab" class="manage-tabs" @tab-change="activeTab === 'audit' && loadAudit()">
       <el-tab-pane label="用户管理" name="users">
         <el-card shadow="never" class="prts-card users-card">
-          <el-table :data="users" v-loading="loading" class="users-table">
+          <div class="filter-bar">
+            <el-input
+              v-model="searchUsername"
+              placeholder="🔍 搜索用户名"
+              clearable
+              style="width: 200px"
+              class="dept-input"
+            />
+            <el-radio-group v-model="filterRole" class="filter-group">
+              <el-radio-button label="">全部角色</el-radio-button>
+              <el-radio-button label="super_admin">超级管理员</el-radio-button>
+              <el-radio-button label="admin">部门管理员</el-radio-button>
+              <el-radio-button label="user">普通用户</el-radio-button>
+            </el-radio-group>
+            <el-select
+              v-model="filterDepartment"
+              placeholder="按部门筛选"
+              clearable
+              style="width: 150px"
+            >
+              <el-option v-for="d in departmentOptions" :key="d" :label="d" :value="d" />
+            </el-select>
+            <el-radio-group v-model="filterActive" class="filter-group">
+              <el-radio-button label="">全部状态</el-radio-button>
+              <el-radio-button label="true">正常</el-radio-button>
+              <el-radio-button label="false">停用</el-radio-button>
+            </el-radio-group>
+            <el-button link type="primary" size="small" @click="clearFilters">清空筛选</el-button>
+            <span class="filter-count">共 {{ filteredUsers.length }} 人</span>
+          </div>
+          <el-table :data="filteredUsers" v-loading="loading" class="users-table" style="margin-top: 12px">
         <el-table-column prop="username" label="用户名" width="160" />
         <el-table-column label="角色" width="130">
           <template #default="{ row }">
@@ -331,6 +409,25 @@ onMounted(refresh)
   font-weight: 600;
 }
 .users-table :deep(.el-table__row:hover > td) { background: #faf8ff !important; }
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.filter-group { flex-shrink: 0; }
+.filter-group :deep(.el-radio-button__inner) {
+  box-shadow: none !important;
+  border-color: #e6e3f0;
+  color: #555170;
+}
+.filter-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background: #f0edfb;
+  color: #6455cf;
+  border-color: #c9c0f2;
+}
+.filter-count { margin-left: auto; font-size: 12.5px; color: #8b87a5; }
 
 .manage-tabs { margin-bottom: 4px; }
 .manage-tabs :deep(.el-tabs__item.is-active) { color: #6455cf; }
