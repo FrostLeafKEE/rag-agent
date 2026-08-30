@@ -17,6 +17,7 @@ from app.api.routes import (
     documents,
     health,
     ingestion_report,
+    kbs,
     qa,
     sessions,
     stats,
@@ -63,6 +64,7 @@ app.include_router(sessions.router)
 app.include_router(qa.router, tags=["qa"])
 app.include_router(ingestion_report.router)
 app.include_router(stats.router)
+app.include_router(kbs.router)
 
 
 @app.get("/metrics", include_in_schema=False)

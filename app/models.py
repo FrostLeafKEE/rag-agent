@@ -57,6 +57,25 @@ class AdminDepartment(Base):
     department: Mapped[str] = mapped_column(String(64))
 
 
+class KnowledgeBase(Base):
+    """知识库（内容分组，位于文档之上）：文档归属知识库，权限继承库的部门标签。
+
+    仅 super_admin 可建/改/删；部门管理员只能管理负责部门内的知识库与文档。
+    有文档时禁止删除（防误删整库分组）。
+    """
+
+    __tablename__ = "knowledge_bases"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True)
+    description: Mapped[str] = mapped_column(String(256), default="")
+    department: Mapped[str] = mapped_column(String(64), default="")  # 权限归属部门（文档继承）
+    created_by: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
 class IngestionReport(Base):
     """摄入质量报告（数据清洗与质量门禁）：每篇文档最近一次摄入的统计。
 
@@ -97,6 +116,9 @@ class Document(Base):
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str] = mapped_column(String(512), default="")
     uploaded_by: Mapped[str] = mapped_column(String(64), default="")
+    kb_id: Mapped[int | None] = mapped_column(
+        ForeignKey("knowledge_bases.id"), nullable=True, index=True
+    )  # 所属知识库（空=未分组）；部门权限继承库的 department
     # 清洗后全文 sha1（内容级去重：解决"A.docx 与 A.pdf 同内容"；B-Tree 索引加速查重）
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -115,6 +137,7 @@ class Document(Base):
             "title": self.title,
             "source_name": self.source_name,
             "department": self.department,
+            "kb_id": self.kb_id,
             "status": self.status,
             "chunk_count": self.chunk_count,
             "error": self.error,

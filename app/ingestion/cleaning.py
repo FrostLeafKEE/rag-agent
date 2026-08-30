@@ -49,9 +49,7 @@ def _is_header_footer_line(line: str) -> bool:
 
 
 def _is_toc_line(line: str) -> bool:
-    return bool(_PATTERN_TOC.match(line)) or bool(
-        "……" in line and re.search(r"\d\s*$", line)
-    )
+    return bool(_PATTERN_TOC.match(line)) or bool("……" in line and re.search(r"\d\s*$", line))
 
 
 def noise_reason(text: str) -> str | None:

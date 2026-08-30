@@ -13,7 +13,7 @@ const searchField = ref('all') // all | doc_id | title | department | uploader
 const statusFilter = ref('') // ''=全部；uploading/indexed/failed/disabled
 
 let searchTimer = null
-watch([keyword, searchField, statusFilter], () => {
+watch([keyword, searchField, statusFilter, kbFilter], () => {
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(refresh, 300)
 })
@@ -26,6 +26,7 @@ async function refresh() {
         keyword: keyword.value || undefined,
         search_field: searchField.value,
         status_filter: statusFilter.value || undefined,
+        kb_id: kbFilter.value || undefined,
       })
     ).items
   } catch (e) {
@@ -107,6 +108,11 @@ async function viewReport(doc) {
   }
 }
 
+function kbName(kbId) {
+  const kb = kbs.value.find((k) => k.id === kbId)
+  return kb ? kb.name : null
+}
+
 const REASON_LABELS = {
   too_short: '过短（<10 字符）',
   no_language: '纯符号/编号',
@@ -160,26 +166,17 @@ onMounted(() => {
           <el-option label="失败" value="failed" />
           <el-option label="已停用" value="disabled" />
         </el-select>
-        <el-select
-          v-if="myDepts"
-          v-model="department"
-          placeholder="选择负责部门"
-          clearable
-          style="width: 250px"
-          class="dept-input"
-        >
-          <el-option v-for="d in myDepts" :key="d" :label="d" :value="d" />
+        <el-select v-model="kbFilter" clearable placeholder="全部知识库" style="width: 170px" class="status-select">
+          <el-option v-for="k in kbs" :key="k.id" :label="k.name" :value="k.id" />
         </el-select>
-        <el-input
-          v-else
-          v-model="department"
-          placeholder="部门标签（权限过滤用，如：研发部）"
-          style="width: 250px"
-          clearable
+        <el-select
+          v-model="uploadKbId"
+          placeholder="📚 选择所属知识库"
+          style="width: 240px"
           class="dept-input"
         >
-          <template #prefix><span class="input-icon">🏷️</span></template>
-        </el-input>
+          <el-option v-for="k in kbs" :key="k.id" :label="`${k.name}（${k.department}）`" :value="k.id" />
+        </el-select>
         <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pdf,.docx,.pptx,.md,.txt,.html">
           <el-button type="primary" :loading="uploading" class="upload-btn">📤 上传文档</el-button>
         </el-upload>
@@ -189,6 +186,11 @@ onMounted(() => {
       <el-table :data="docs" v-loading="loading" style="margin-top: 18px" class="docs-table">
         <el-table-column prop="doc_id" label="文档 ID" width="210" show-overflow-tooltip />
         <el-table-column prop="title" label="标题" min-width="170" show-overflow-tooltip />
+        <el-table-column label="知识库" width="130">
+          <template #default="{ row }">
+            <span class="dept-tag">{{ kbName(row.kb_id) || '未分组' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="部门" width="110">
           <template #default="{ row }">
             <span class="dept-tag">{{ row.department || '—' }}</span>

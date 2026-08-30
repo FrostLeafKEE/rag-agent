@@ -97,10 +97,11 @@ export const api = {
     return fetch(API + `/api/v1/documents?${q}`, { headers: authHeaders() }).then(handle)
   },
   myDepartments: () => fetch(API + '/api/v1/documents/departments', { headers: authHeaders() }).then(handle),
-  uploadDocument: async (file, department) => {
+  uploadDocument: async (file, department, kbId = null) => {
     const form = new FormData()
     form.append('file', file)
     form.append('department', department)
+    if (kbId) form.append('kb_id', kbId)
     const resp = await fetch(API + '/api/v1/documents/upload', {
       method: 'POST',
       headers: authHeaders(),
@@ -115,6 +116,22 @@ export const api = {
   getIngestionReport: (docId) =>
     fetch(API + `/api/v1/ingestion/report/${docId}`, { headers: authHeaders() }).then(handle),
   getOverview: () => fetch(API + '/api/v1/stats/overview', { headers: authHeaders() }).then(handle),
+  listKbs: (keyword = '') =>
+    fetch(API + `/api/v1/kbs?keyword=${encodeURIComponent(keyword)}`, { headers: authHeaders() }).then(handle),
+  createKb: (payload) =>
+    fetch(API + '/api/v1/kbs', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    }).then(handle),
+  updateKb: (kbId, payload) =>
+    fetch(API + `/api/v1/kbs/${kbId}`, {
+      method: 'PUT',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    }).then(handle),
+  deleteKb: (kbId) =>
+    fetch(API + `/api/v1/kbs/${kbId}`, { method: 'DELETE', headers: authHeaders() }).then(handle),
 
   // 用户管理（super_admin，RBAC）
   listUsers: () => fetch(API + '/api/v1/admin/users', { headers: authHeaders() }).then(handle),

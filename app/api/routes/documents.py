@@ -22,7 +22,7 @@ from app.db import get_session
 from app.ingestion.indexer import SAFE_DOC_ID
 from app.ingestion.parser import SUPPORTED_EXTENSIONS
 from app.ingestion.queue import enqueue
-from app.models import Document, User
+from app.models import Document, KnowledgeBase, User
 from app.retrieval.base import SAFE_DEPARTMENT
 
 logger = logging.getLogger(__name__)
@@ -89,10 +89,18 @@ async def upload(
     request: Request,
     department: str = Form("", max_length=64),
     doc_id: str | None = Form(None),
+    kb_id: int | None = Form(None),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> UploadResponse:
     _require_doc_admin(user)
+    kb = None
+    if kb_id is not None:
+        # 上传到知识库：文档部门权限继承库的 department（推荐路径）
+        kb = await session.get(KnowledgeBase, kb_id)
+        if kb is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "知识库不存在")
+        department = kb.department
     if department and not SAFE_DEPARTMENT.match(department):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -142,6 +150,7 @@ async def upload(
             title=file.filename or final_doc_id,
             source_name=file.filename or "",
             department=department,
+            kb_id=kb.id if kb is not None else None,
             status="uploading",
             uploaded_by=user.username,
         )
@@ -160,6 +169,7 @@ async def upload(
             )
         doc.status = "uploading"
         doc.error = ""
+        doc.kb_id = kb.id if kb is not None else doc.kb_id
         await session.commit()
 
     # 摄入任务入队（Redis Stream，独立 worker 消费）。
@@ -234,6 +244,7 @@ async def list_documents(
     status_filter: str | None = None,
     keyword: str | None = None,
     search_field: str = "all",
+    kb_id: int | None = None,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -251,6 +262,8 @@ async def list_documents(
         query = query.where(Document.department.in_(visible or ["__none__"]))
     if status_filter:
         query = query.where(Document.status == status_filter)
+    if kb_id is not None:
+        query = query.where(Document.kb_id == kb_id)
     kw = (keyword or "").strip()
     if kw:
         pattern = f"%{kw}%"

@@ -37,6 +37,9 @@ function logout() {
         <el-menu-item v-if="canManageDocs" index="/home">
           <span class="menu-icon">📊</span> 数据概览
         </el-menu-item>
+        <el-menu-item v-if="canManageDocs" index="/kbs">
+          <span class="menu-icon">📚</span> 知识库管理
+        </el-menu-item>
         <el-menu-item index="/chat">
           <span class="menu-icon">💬</span> 问答工作台
         </el-menu-item>
