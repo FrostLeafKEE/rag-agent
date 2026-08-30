@@ -85,9 +85,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="批量归组文档到知识库")
     parser.add_argument("--kb", help="目标知识库（名称或 ID）")
     parser.add_argument("--doc-id", action="append", help="按文档 ID 归组（可多次）")
-    parser.add_argument(
-        "--department", help="归组该部门的所有未分组文档"
-    )
+    parser.add_argument("--department", help="归组该部门的所有未分组文档")
     parser.add_argument("--all-unassigned", action="store_true", help="归组所有未分组文档")
     parser.add_argument("--list-unassigned", action="store_true", help="列出未分组文档")
     args = parser.parse_args()
