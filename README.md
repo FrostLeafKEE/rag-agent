@@ -1,7 +1,7 @@
 # 企业级 RAG Agent — 知识库问答平台
 
 > 把内部文档变成可问答的知识库：混合检索 + Agent 编排 + 引用溯源 + RBAC 权限 + 评估回归 + 全链路可观测。
-> 当前版本 **0.2.0**（[CHANGELOG](CHANGELOG.md)）· 173 测试全绿 · ruff/mypy 0 错误
+> 当前版本 **0.3.0**（[CHANGELOG](CHANGELOG.md)）· 192 后端测试 + 6 前端渲染测试全绿 · ruff/mypy 0 错误
 
 ---
 
@@ -191,6 +191,7 @@ uv run python -m app.cli.create_admin --username admin --password '强密码' --
 │   ├── ingestion/        # parser(OCR) / chunker / **cleaning(清洗+质量门禁)** / embedder / indexer / pipeline / queue / worker / connector
 │   ├── llm/              # 模型网关（OpenAI 兼容）/ 提示词
 │   ├── observability/    # Langfuse trace / Prometheus 指标
+│   ├── api/routes/stats.py  # 数据概览统计 API（管理员）
 │   ├── retrieval/        # 混合检索 / RRF / 重排 / 术语表 / 权限 filter
 │   └── security/         # PII 脱敏引擎
 ├── web-ui/               # Vue3 管理台（src/views：Chat/Docs/Users/Login）
@@ -251,7 +252,7 @@ uv run python -m app.eval.feedback_collect      # 点踩样本 → 评估用例
 | 文档 | 内容 |
 |---|---|
 | **[MANUAL.md](docs/MANUAL.md)** | 📖 介绍 · 部署手册 · 使用手册 · 常见问题 |
-| **[CHANGELOG.md](CHANGELOG.md)** | 版本记录（当前 0.2.0，语义化版本策略） |
+| **[CHANGELOG.md](CHANGELOG.md)** | 版本记录（当前 0.3.0，语义化版本策略） |
 | [PRD.md](docs/PRD.md) | 需求（FR-01~46）+ 里程碑 + 附录（实现核对/安全审计记录） |
 | [TECH_STACK.md](docs/TECH_STACK.md) | 选型理由、架构图、数据模型、ADR、评估基线、外部依赖降级矩阵 |
 | [ROADMAP.md](docs/ROADMAP.md) | 改进路线图（三批 14 项 + 复审闭环，前两批已完成） |
