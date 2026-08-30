@@ -363,11 +363,19 @@ def test_list_limit_clamped(_cleanup: None, _no_enqueue: None) -> None:
 
 
 def test_login_lockout_after_repeated_failures() -> None:
-    """同一用户名连续失败 5 次后锁定（第 6 次登录 429）。"""
+    """同一用户名连续失败 5 次后锁定（第 6 次登录 429）。需要本地 Redis。"""
     import asyncio
+    import socket
 
     from app.api.routes import auth as auth_routes
     from app.api.routes.auth import _LOGIN_FAIL_LIMIT
+
+    # CI/离线环境无 Redis：登录限速有降级逻辑（auth 层吞连接异常），锁定行为仅在有 Redis 时验证
+    try:
+        sock = socket.create_connection(("localhost", 6379), timeout=1)
+        sock.close()
+    except OSError:
+        pytest.skip("Redis 不可达，跳过登录锁定行为测试")
 
     username = "sec_lockout_test"
 
