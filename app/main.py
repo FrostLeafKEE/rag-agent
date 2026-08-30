@@ -19,6 +19,7 @@ from app.api.routes import (
     ingestion_report,
     qa,
     sessions,
+    stats,
 )
 from app.config import get_settings
 from app.db import init_db
@@ -61,6 +62,7 @@ app.include_router(documents.router)
 app.include_router(sessions.router)
 app.include_router(qa.router, tags=["qa"])
 app.include_router(ingestion_report.router)
+app.include_router(stats.router)
 
 
 @app.get("/metrics", include_in_schema=False)

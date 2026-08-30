@@ -114,6 +114,7 @@ export const api = {
     fetch(API + `/api/v1/documents/${docId}`, { method: 'DELETE', headers: authHeaders() }).then(handle),
   getIngestionReport: (docId) =>
     fetch(API + `/api/v1/ingestion/report/${docId}`, { headers: authHeaders() }).then(handle),
+  getOverview: () => fetch(API + '/api/v1/stats/overview', { headers: authHeaders() }).then(handle),
 
   // 用户管理（super_admin，RBAC）
   listUsers: () => fetch(API + '/api/v1/admin/users', { headers: authHeaders() }).then(handle),

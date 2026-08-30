@@ -11,7 +11,7 @@ const user = computed(() => {
     return null
   }
 })
-// RBAC：super_admin → 全部菜单；admin → 问答+文档；user → 仅问答
+// RBAC：super_admin → 全部菜单；admin → 概览+文档；user → 仅问答
 const canManageDocs = computed(() => ['super_admin', 'admin'].includes(user.value?.role))
 const isSuperAdmin = computed(() => user.value?.role === 'super_admin')
 
@@ -34,6 +34,9 @@ function logout() {
         </div>
       </div>
       <el-menu :default-active="route.path" router class="side-menu">
+        <el-menu-item v-if="canManageDocs" index="/home">
+          <span class="menu-icon">📊</span> 数据概览
+        </el-menu-item>
         <el-menu-item index="/chat">
           <span class="menu-icon">💬</span> 问答工作台
         </el-menu-item>
