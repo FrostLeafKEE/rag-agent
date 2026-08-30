@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 
@@ -11,6 +11,7 @@ const myDepts = ref(null) // null=不限（super_admin）；数组=负责部门�
 const keyword = ref('') // 文档搜索：按所选字段模糊匹配（防抖自动搜索）
 const searchField = ref('all') // all | doc_id | title | department | uploader
 const statusFilter = ref('') // ''=全部；uploading/indexed/failed/disabled
+const kbFilter = ref(null) // 列表按知识库筛选（null=全部）
 
 let searchTimer = null
 watch([keyword, searchField, statusFilter, kbFilter], () => {
@@ -108,10 +109,11 @@ async function viewReport(doc) {
   }
 }
 
-function kbName(kbId) {
-  const kb = kbs.value.find((k) => k.id === kbId)
-  return kb ? kb.name : null
-}
+const kbNameMap = computed(() => {
+  const map = {}
+  for (const k of kbs.value) map[k.id] = k.name
+  return map
+})
 
 const REASON_LABELS = {
   too_short: '过短（<10 字符）',
@@ -188,7 +190,7 @@ onMounted(() => {
         <el-table-column prop="title" label="标题" min-width="170" show-overflow-tooltip />
         <el-table-column label="知识库" width="130">
           <template #default="{ row }">
-            <span class="dept-tag">{{ kbName(row.kb_id) || '未分组' }}</span>
+            <span class="dept-tag">{{ kbNameMap[row.kb_id] || '未分组' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="部门" width="110">
